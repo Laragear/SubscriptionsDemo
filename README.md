@@ -17,7 +17,7 @@ You can fuel my development using [Patreon](https://patreon.com/packagesforlarav
 
 [![](.assets/patreon.png)](https://patreon.com/packagesforlaravel)
 
-Alternatively, you can **[spread the word!](http://twitter.com/share?text=This%20awesome%20Laravel%20package%20will%20be%20come%20free%20at%20100%20Patreons.%20Let%27s%20reach%20that%21&url=https://github.com%2FLaragear%2FSubscriptionsDemo&hashtags=PHP,Laravel,Patreon)**
+Alternatively, you can **[spread the word!](http://twitter.com/share?text=This%20awesome%20Laravel%20package%20will%20be%20free%20at%20100%20Patreons.%20Let%27s%20reach%20that%21&url=https://github.com%2FLaragear%2FSubscriptionsDemo&hashtags=PHP,Laravel,Patreon)** or [check my other packages](https://github.com/Laragear).
 
 ## Requirements
 
