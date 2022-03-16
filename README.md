@@ -11,11 +11,13 @@ $subscription = Auth::user()->subscribeTo(Plan::find(1));
 return "You are now subscribed to $subscription->name!";
 ```
 
-## Keep this package free
+## I want this package!
 
-[![](.assets/patreon.png)](https://patreon.com/packagesforlaravel)[![](.assets/ko-fi.png)](https://ko-fi.com/DarkGhostHunter)[![](.assets/buymeacoffee.png)](https://www.buymeacoffee.com/darkghosthunter)[![](.assets/paypal.png)](https://www.paypal.com/paypalme/darkghosthunter)
+You can fuel my development using [Patreon](https://patreon.com/packagesforlaravel). This package will be available once I reach 100 Patreons.
 
-Your support allows me to keep this package free, up-to-date and maintainable. Alternatively, you can **[spread the word!](http://twitter.com/share?text=I%20am%20using%20this%20cool%20PHP%20package&url=https://github.com%2FLaragear%2FCacheQuery&hashtags=PHP,Laravel)**
+[Hace 5 dollars to spare?](https://patreon.com/packagesforlaravel).
+
+Alternatively, you can **[spread the word!](http://twitter.com/share?text=This%20awesome%20Laravel%20package%20will%20be%20come%20free%20at%20100%20Patreons.%20Let%27s%20reach%20that%21&url=https://github.com%2FLaragear%2FSubscriptionsDemo&hashtags=PHP,Laravel,Patreon)**
 
 ## Requirements
 
