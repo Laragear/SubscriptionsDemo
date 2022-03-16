@@ -742,9 +742,10 @@ echo $user->subscription->isCancelled(); // true
 Most of the subscription data is set at a plan-level. Laragear's Subscriptions package automatically copies over the Plan blueprint into the Subscription model, which allows you to modify it for a particular subscription instead of mistakenly propagate changes to all subscriptions.
 
 ```php
-$subscription->capability('deliveries', 500)->save();
+$subscription->capabilities->set('deliveries', 20)->save();
 
-echo $plan->capability('deliveries'); // 10
+echo $subscription->capability('deliveries'); // 20
+echo $subscription->plan->capability('deliveries'); // 10
 ```
 
 You're free to edit the Subscription as you see fit. Remember calling `save()` to push the changes into the database permanently.
@@ -772,9 +773,9 @@ use Illuminate\Support\Facades\Auth;
 $extended = Auth::user()->subscription->rewindTo(now()->day(5));
 
 // Multiply the days extended by the cost-per-day of the monthly subscription.
-$cost = $extended->days * (29.90 / 30); // 3.98, if you're curious.
+$cost = $extended->totalDays * (29.90 / 30); // 3.98, if you're curious.
 
-return "You will be charged $ {$cost} to accommodate the cycle change. Next cycle will be charged the normal rate.";
+return "You will be charged $ {$cost} to accommodate the cycle change. Next cycle will be charged the normally.";
 ```
 
 ### Shared subscriptions
@@ -788,15 +789,14 @@ use App\Models\User;
 use Laragear\Subscriptions\Models\Subscription;
 use Illuminate\Support\Facades\Auth;
 
+$user = Auth::user();
 $guest = User::find(4);
 
-$subscription = Subscription::find('bc728326...')
-
-if (Auth::user()->cannot('attachTo', [$subscription, $guest])) {
-    return "Only admins can manage this $subscription->name.";
+if ($user->cannot('attachTo', [$user->subscription, $guest])) {
+    return 'Only admins can attach users to this subscriptions.';
 }
 
-$subscriber = $subscription->attach($guest);
+$user->subscription->attach($guest);
 ```
 
 To remove an entity from the subscription, use `detach()` over the subscription and the entity.
@@ -806,15 +806,16 @@ use App\Models\User;
 use Laragear\Subscriptions\Facades\Subscription;
 use Illuminate\Support\Facades\Auth;
 
+$user = Auth::user();
 $guest = User::find(4);
 
 $subscription = Subscription::find('bc728326...');
 
-if (Auth::user()->cannot('detachFrom', [$subscription, $guest])) {
-    return "Only admins can manage this $subscription->name.";
+if ($user->cannot('detachFrom', [$user->subscription, $guest])) {
+    return 'Only admins can attach users to this subscriptions.';
 }
 
-$subscriber = $subscription->detach($guest);
+$user->subscription->detach($guest);
 ```
 
 ### Used and unused time
@@ -835,7 +836,7 @@ $price = 49.90 - $user->subscription()->unused()->days * 29.90;
 return "Upgrade now and pay a reduced price of $ $price.";
 ```
 
-> Intervals for `used()` and `unused()` return `0` intervals if the subscription hasn't started or already ended.
+> Intervals for `used()` and `unused()` return empty intervals if the subscription hasn't started or already ended.
 
 ### Upgrading / Downgrading
 
@@ -853,7 +854,7 @@ if ($user->cant('upgradeTo', $plan)) {
     return "You cannot upgrade to the plan $plan->name";
 }
 
-$newSubscription = $user->changeTo($plan);
+$upgraded = $user->changeTo($plan);
 ```
 
 > This will automatically migrate all attached entities to the new plan.
@@ -881,7 +882,7 @@ use Illuminate\Support\Facades\Auth;
 
 $user = Auth::user();
 
-$count = $user->deliveries()->whereMonth(today())->count();
+$count = $user->deliveries()->forCurrentMonth()->count();
 
 $max = $user->subscription->capability('deliveries', 0);
 
@@ -893,7 +894,7 @@ You can use `capabilities` property directly to set a new value.
 ```php
 use Illuminate\Support\Facades\Auth;
 
-if (Lottery::guess(30)) {
+if (Lottery::seed(300)) {
     Auth::user()->subscription->capabilities->set('deliveries', 20);
 
     return 'You are the lucky winner! You now have 20 deliveries forever!';
