@@ -13,7 +13,7 @@ return "You are now subscribed to $subscription->name!";
 
 ## I want this package!
 
-You can fuel my development using [Patreon](https://patreon.com/packagesforlaravel). This package will be available once I reach 100 Patreons.
+You can fuel my development using [Patreon](https://patreon.com/packagesforlaravel). This package will be available publicly once I reach 100 Patreons.
 
 [![](.assets/patreon.png)](https://patreon.com/packagesforlaravel)
 
