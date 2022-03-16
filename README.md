@@ -913,12 +913,12 @@ $user->subscription->save();
 
 ### Checking capabilities
 
-To avoid using complex syntax, you can use convenient methods to check for the capabilities of a subscription. Use `of()` along the capability key in `dot.notation` and one of the self-explanatory methods to check for conditions.
+To avoid using complex syntax, you can use convenient methods to check for the capabilities of a subscription. Use `check()` along the capability key in `dot.notation` and one of the self-explanatory methods to check for conditions.
 
 ```php
 $user = Auth::user();
 
-if ($user->subscription->check('express_delivery')->isDisabled()) {
+if ($user->subscription->hasDisabled('express_delivery')) {
     return 'Your subscription does not support Express Deliveries';
 }
 ```
@@ -927,21 +927,37 @@ These are the following methods you can chain to a check
 
 | Method               | Description                                                                    |
 |----------------------|--------------------------------------------------------------------------------|
-| isEnabled            | Checks the capability exists and is truthy.                                    |
+| hasEnabled           | Checks the capability exists and is truthy.                                    |
 | canUse               | Checks the capability exists and is truthy.                                    |
-| isDisabled           | Checks the capability doesn't exist or is falsy.                               |
+| hasDisabled          | Checks the capability doesn't exist or is falsy.                               |
 | cannotUse            | Checks the capability doesn't exist or is falsy.                               |
 | cantUse              | Checks the capability doesn't exist or is falsy.                               |
-| isGreaterThan        | Checks the capability value or list is greater than the given number.          |
-| exceeds              | Checks the capability value or list is greater than the given number.          |
-| isEqualOrGreaterThan | Checks the capability value or list is equal or greater than the given number. |
-| is                   | Checks the capability value is equal to another value, strictly or not.        |
-| isSameAs             | Checks the capability value is equal to another value, strictly.               |
-| isEqualOrLessThan    | Checks the capability value is equal or less than the given number.            |
-| doesntExceeds        | Checks the capability value is equal or less than the given number.            |
-| isLessThan           | Checks the capability value is equal or less than the given number.            |
 | isBlank              | Checks the capability value is "blank".                                        |
 | isFilled             | Checks the capability value is "filled".                                       |
+
+You can also fluently compare values using the `check()` method:
+
+```php
+$user = Auth::user();
+
+$count = $user->deliveries()->forThisMonth()->count();
+
+if ($user->subscription->check($count)->exceeds('deliveries')) {
+    return 'Your subscription does not support Express Deliveries';
+}
+```
+
+| Method                              | Description                                                          |
+|-------------------------------------|----------------------------------------------------------------------|
+| `isGreaterThan($capability)`        | Checks if the value is greater than the named capability.            |
+| `exceeds($capability)`              | Checks if the value is greater than the named capability.            |
+| `isEqualOrGreaterThan($capability)` | Checks if the value is equal or greater than the named capability.   |
+| `is($capability)`                   | Checks if the value is equal to the named capability, strictly .     |
+| `isNot($capability)`                | Checks if the value is not equal to the named capability, strictly . |
+| `isSameAs($capability)`             | Checks if the value is equal to the named capability.                |
+| `isEqualOrLessThan($capability)`    | Checks if the value is equal or less than the named capability.      |
+| `doesntExceeds($capability)`        | Checks if the value is equal or less than the named capability.      |
+| `isLessThan($capability)`           | Checks if the value is less than the named capability.               |
 
 ## Authorization
 
@@ -972,7 +988,7 @@ This allows you to use authorization gates directly in your application, like in
 You're free to change them as you see fit for your application. For example, you can add a `haveUpgradeDiscount()` gate to check if a subscription upgrade is eligible for a discount.
 
 ```php
-// app\SubscriptionPolicy.php
+// app\Policies\SubscriptionPolicy.php
 public function haveUpgradeDiscount($user, Subscription $subscription): bool
 {
     return $subscription->isActive() 
@@ -1018,12 +1034,12 @@ This package fires the following self-explanatory events:
 
 ## Subscribers default model
 
-When using the `Subscription` model, you can query the subscribers using `subscribers()`, or the `subscribers`.
+When using the `Subscription` model, you can query the subscribers using `subscribers()`, which should be the _sane_ way to get all the subscribers for a subscription.
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
 
-$subscribers = Subscription::first()->subscribers;
+$subscribers = Subscription::first()->subscribers()->get();
 ```
 
 This works seamlessly thanks because the `$defaultSubscriberModel` points to `App\Models\User`, which is the default model for users in a fresh Laravel installation. If you're using a different model to attach to subscriptions, you may change it:
@@ -1053,7 +1069,7 @@ use App\Models\User;
 $plan = Plan::factory()->called('test')->monthly()->createOne();
 ```
 
-For the case of the Subscription Factory, you may want to attach entities after creating them using `subscribable()` and issuing the entity to attach on the method and the `attach()` method.
+For the case of the Subscription Factory, you may want to attach entities after creating them using the `attach()` method.
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
@@ -1066,7 +1082,7 @@ $subscription = Subscription::factory()
     ->monthly()
     ->createOne();
 
-$subscription->subscribers($company)->attach($company);
+$subscription->attach($company);
 ```
 
 ## Laravel Octane compatibility
