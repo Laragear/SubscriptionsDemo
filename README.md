@@ -29,7 +29,7 @@ Alternatively, you can **[spread the word!](http://twitter.com/share?text=This%2
 You can install the package via composer:
 
 ```bash
-composer require laragear/cache-query
+composer require laragear/subscriptions
 ```
 
 ## How this works?
