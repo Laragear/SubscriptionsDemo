@@ -34,33 +34,81 @@ composer require laragear/subscriptions
 
 ## How this works?
 
-Laragear's Subscriptions package uses the power of Laravel Eloquent Models with some small magic to handle a small but flexible Subscription system that you can use to serve your needs.
+Laragear's Subscriptions package uses the power of Laravel Eloquent Models with some magic to handle a small but flexible Subscription system.
 
-The basic approach is simple: a Plan acts like a blueprint to create Subscriptions, which are marked to renew by certain intervals. Multiple Entities, like your included User, can attach to one, or even multiple subscriptions.
+The basic approach is simple: a Plan acts like a blueprint to create Subscriptions, which are marked to renew by certain intervals. A model, like your included User, can have one subscription, or even multiple subscriptions at the same time.
 
 This enables multiple ways to handle subscriptions across your app:
 
-- Enable upgrades only to certain Plans.
+- Upgrade only to a group of Plans.
 - Share a subscription between multiple users.
-- Lock and unlock Plans.
+- Lock and unlock Plans...
 
 ... and much more.
 
 ## Set up
 
-Before starting, we need to install some files into your application: the migrations tables, the policies, and the plans blueprints.
+1. Before starting, we need to install some files into your application: the migrations tables, the policies, and the plans blueprints.
 
 ```shell
 php artisan subscriptions:install
 ```
 
-If you don't require any change to the migrations files, like adding custom columns to handle prices, or whatever else, you can just migrate your database tables like it was Monday.
+2. If you will be subscribing only your `App\Models\User` model, and access them using `subscribers()`, you can skip this step.
+
+Otherwise, you will need to set the name of relationship of the subscribers in the Subscription model. If you're using a monomorphic relation, use `Subscription::macroRelation()`. For polymorphic relations, use  `Subscription::macroPolymorphicRelation()`.
+
+```php
+use Laragear\Subscriptions\Models\Subscription;
+use App\Models\Actor;
+use App\Models\Director;
+
+public function boot()
+{
+    // For a simple monomorphic relationship.
+    Subscription::macroRelation('actors', Actor::class);
+    
+    // For all of your polymorphic relationships.
+    Subscription::macroPolymorphicRelations([
+        'actors' => Actor::class,
+        'directors' => Director::class,
+    ]); 
+}
+```
+
+This way you will be able to access subscribers from a Subscription model using the relation name:
+
+```php
+use Laragear\Subscriptions\Models\Subscription;
+
+$actors = Subscription::find('bc728326...')->actors;
+```
+
+> More details in the [polymorphic section](#polymorphic-relations). Don't worry, is just some paragraphs with code.
+
+3. If you don't require any further change to the migrations files, like [adding custom columns](#custom-columns) to handle prices, or changing the foreign key to UUID, you can just migrate your database tables like it was another day in the office:
 
 ```shell
 php artisan migrate
 ```
 
 > Migrations create 3 tables: `plans`, `subscribable` and `subscriptions`.
+
+Finally, add the `WithSubscriptions` trait to your models, which will enable the entity to handle subscriptions easily with just a few methods.
+
+```php
+namespace App\Models;
+
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laragear\Subscriptions\WithSubscriptions;
+
+class User extends Authenticatable
+{
+    use WithSubscriptions;
+
+    // ...
+}
+```
 
 ## Plans
 
@@ -164,7 +212,7 @@ Plan::called('Basic')->withColumns([
 ]);
 ```
 
-Later, these values can be accessed like a normal property from its Subscription, as values will be copied over them as long the column exists.
+Later, these values can be accessed like a normal property from its Subscription, as these values will be copied over them as long the column exists.
 
 ```php
 echo $subscription->price; // 29.90
@@ -486,31 +534,11 @@ Subscription::useOrderedUuid();
 
 ## Subscriptions
 
-After your plans are set, the next step is to subscribe entities, like a user or a company. It doesn't matter which model you set to be subscribed.
-
-### Setup
-
-First, you will need enable subscriptions for an Eloquent Model. Add the `WithSubscriptions` trait to it.
-
-```php
-namespace App\Models;
-
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Laragear\Subscriptions\WithSubscriptions;
-
-class User extends Authenticatable
-{
-    use WithSubscriptions;
-
-    // ...
-}
-```
-
-This enables the entity to handle subscriptions easily with a few methods.
+After your plans are set, the next step is to subscribe entities, like a user or a company. It doesn't matter which model you set to be subscribed, as this package handles subscribers as a polymorphic relationship.
 
 ### Subscribing to a Plan
 
-The most common task is subscribing to a Plan. You can use `subscribeTo()` with the Plan instance. It returns a persisted `Subscription` model you can edit further, if you want.
+The most common task is subscribing to a Plan. You can use `subscribeTo()` with the Plan instance. It returns a persisted `Subscription` model.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
@@ -533,7 +561,7 @@ $subscription = $user->subscribeTo($plan, [
 ]);
 ```
 
-Alternatively, you can use the `Subscribe` facade to operate over multiple entities.
+Alternatively, you can use the `Subscribe` facade to attach multiple entities to one subscription. When doing this, only the first entity will be considered the _admin_.
 
 ```php
 use App\Models\User;
@@ -544,14 +572,16 @@ $plan = Plan::find(1);
 
 $users = User::where('is_vip')->lazy();
 
-$subscription = Subscribe::to($plan, $users, ['metadata' => ['is_cool' => true]]);
+$subscription = Subscribe::to($plan, $users, [
+    'metadata' => ['is_cool' => true]
+]);
 ```
 
 #### Attaching data to the pivot
 
 Behind the scenes, Laragear's Subscription package creates a pivot record called "Subscribable", which binds one or multiple entities to a Subscription. 
 
-You can access the metadata as `subscribable`, and set the values you want. There is no need to add `is_admin` or `metadata`, as the pivot table already comes with these columns. For more columns, you will have to edit the migration.
+You can access the metadata as `subscribable`, and set the values you want. There is no need to add `is_admin` or `metadata`, as the pivot table already comes with these columns. For additional columns, you will have to edit the migration.
 
 ```php
 use Illuminate\Support\Facades\Auth;
@@ -617,7 +647,7 @@ $user = User::find(1);
 $subscription = $user->subscription;
 ```
 
-For the case of users attached to multiple subscriptions, it always returns the latest subscribed from all active. You can use the ID of a subscription to retrieve it directly, as long it's active. It will also return `null` if it's not found or if expired.
+For the case of users attached to multiple subscriptions, it always returns the latest subscribed from all active. You can use the ID of a subscription to retrieve it directly, as long it's active. It will also return `null` if there is no active subscription found.
 
 ```php
 use App\Models\User;
@@ -669,7 +699,7 @@ You can extend a subscription for more cycles using `renewBy()` along the number
 echo $user->subscription->renewBy(2)->ends_at; // "2020-04-30 23:59:59"
 ```
 
-> Renewing a subscription removes the [grace period](#grace-period). After renewing, it's recommended to add the grace period.
+> Since renewing a subscription removes the past [grace period](#grace-period), ensure you call `graceTo()` after renewing.
 
 ### Grace period
 
@@ -752,25 +782,31 @@ You're free to edit the Subscription as you see fit. Remember calling `save()` t
 
 ### Moving the cycle start
 
-Moving the subscription cycle start it's usually a big problem, but sometimes you will need to change it for legal reasons or because your customer demands it. The way Laragear's Subscription package deals with moving the cycle start is by extending the current cycle until the new date.
+Moving the subscription cycle start it's usually a big problem, but sometimes you will need to change it for legal reasons or because a particular demand. The way Laragear's Subscription package deals with moving the cycle start is by extending the current cycle until the new date.
 
-You only need to use `rewindTo()` with a new future date. The subscription will change at the date issued.
+You only need to use `adjustStartTo()` with a new future date. The subscription will change at the date issued.
 
 ```php
 use Illuminate\Support\Facades\Auth;
 
-Auth::user()->subscription->rewindTo(now()->day(5));
+$user = Auth::user();
+
+$user->subscription->adjustStartTo(now()->day(5));
+
+$user->subscription->save();
 
 return 'Your subscriptions is now billed the 5th of each month.';
 ```
 
-You may want to get the `CarbonInterval` for the added extension. The interval can be used to calculate how much to charge up-front or at the next billing date, based on the costs of the subscription. For example, here the user will be charged up-front for the extended date, before persisting the cycle change.
+The method returns a `CarbonInterval` instance. You can use that, for example, to calculate how much to charge up-front or at the next billing date, based on the costs of the subscription.
+
+In the following example, the user will be charged up-front for the extended date, before persisting the cycle change.
 
 ```php
 use Illuminate\Support\Facades\Auth;
 
 // Rewinds the subscription 4 days forward from now, 1st of January. 
-$extended = Auth::user()->subscription->rewindTo(now()->day(5));
+$extended = Auth::user()->subscription->adjustStartTo(now()->day(5));
 
 // Multiply the days extended by the cost-per-day of the monthly subscription.
 $cost = $extended->totalDays * (29.90 / 30); // 3.98, if you're curious.
@@ -782,21 +818,21 @@ return "You will be charged $ {$cost} to accommodate the cycle change. Next cycl
 
 Normally, one entity will be tied to one subscription, but you can attach multiple entities to a subscription. You can use `attach()` over the Subscription using the entity to attach. It also accepts an optional array of attributes to set in the pivot table.
 
-This is useful to mix with an [authorization gate](#authorization) to check if the plan allows to be shared, and there are slots free.
+This is useful to mix with an [authorization gate](#authorization) to check if the plan allows to be shared, and there are slots free to attach the user.
 
 ```php
 use App\Models\User;
 use Laragear\Subscriptions\Models\Subscription;
 use Illuminate\Support\Facades\Auth;
 
-$user = Auth::user();
+$admin = Auth::user();
 $guest = User::find(4);
 
-if ($user->cannot('attachTo', [$user->subscription, $guest])) {
+if ($admin->cannot('attachTo', [$admin->subscription, $guest])) {
     return 'Only admins can attach users to this subscriptions.';
 }
 
-$user->subscription->attach($guest);
+$admin->subscription->attach($guest);
 ```
 
 To remove an entity from the subscription, use `detach()` over the subscription and the entity.
@@ -806,16 +842,16 @@ use App\Models\User;
 use Laragear\Subscriptions\Facades\Subscription;
 use Illuminate\Support\Facades\Auth;
 
-$user = Auth::user();
+$admin = Auth::user();
 $guest = User::find(4);
 
 $subscription = Subscription::find('bc728326...');
 
-if ($user->cannot('detachFrom', [$user->subscription, $guest])) {
+if ($admin->cannot('detachFrom', [$admin->subscription, $guest])) {
     return 'Only admins can attach users to this subscriptions.';
 }
 
-$user->subscription->detach($guest);
+$admin->subscription->detach($guest);
 ```
 
 ### Used and unused time
@@ -894,8 +930,11 @@ You can use `capabilities` property directly to set a new value.
 ```php
 use Illuminate\Support\Facades\Auth;
 
+$subscription = Auth::user()->subscription;
+
 if (Lottery::seed(300)) {
-    Auth::user()->subscription->capabilities->set('deliveries', 20);
+    $subscription->capabilities->set('deliveries', 20);
+    $subscription->save();
 
     return 'You are the lucky winner! You now have 20 deliveries forever!';
 }
@@ -914,55 +953,55 @@ $user->subscription->save();
 
 ### Checking capabilities
 
-To avoid using complex syntax, you can use convenient methods to check for the capabilities of a subscription. Use `check()` along the capability key in `dot.notation` and one of the self-explanatory methods to check for conditions.
+To avoid using complex syntax, you can use convenient methods to check for the capabilities of a subscription. Use `check()` along the capability key in `dot.notation` and one of the self-explanatory methods to check if a condition is true or false.
 
 ```php
 $user = Auth::user();
 
-if ($user->subscription->hasDisabled('express_delivery')) {
+if ($user->subscription->hasDisabled('delivery.express')) {
     return 'Your subscription does not support Express Deliveries';
 }
 ```
 
 These are the following methods you can chain to a check
 
-| Method               | Description                                                                    |
-|----------------------|--------------------------------------------------------------------------------|
-| hasEnabled           | Checks the capability exists and is truthy.                                    |
-| canUse               | Checks the capability exists and is truthy.                                    |
-| hasDisabled          | Checks the capability doesn't exist or is falsy.                               |
-| cannotUse            | Checks the capability doesn't exist or is falsy.                               |
-| cantUse              | Checks the capability doesn't exist or is falsy.                               |
-| isBlank              | Checks the capability value is "blank".                                        |
-| isFilled             | Checks the capability value is "filled".                                       |
+| Method      | Description                                      |
+|-------------|--------------------------------------------------|
+| hasEnabled  | Checks the capability exists and is truthy.      |
+| canUse      | Checks the capability exists and is truthy.      |
+| hasDisabled | Checks the capability doesn't exist or is falsy. |
+| cannotUse   | Checks the capability doesn't exist or is falsy. |
+| cantUse     | Checks the capability doesn't exist or is falsy. |
+| isBlank     | Checks the capability value is "blank".          |
+| isFilled    | Checks the capability value is "filled".         |
 
 You can also fluently compare values using the `check()` method:
 
 ```php
 $user = Auth::user();
 
-$count = $user->deliveries()->forThisMonth()->count();
+$count = $user->deliveries()->forCurrentMonth()->count();
 
 if ($user->subscription->check($count)->exceeds('deliveries')) {
-    return 'Your subscription does not support Express Deliveries';
+    return 'You have depleted all your available deliveries for this month.';
 }
 ```
 
-| Method                              | Description                                                          |
-|-------------------------------------|----------------------------------------------------------------------|
-| `isGreaterThan($capability)`        | Checks if the value is greater than the named capability.            |
-| `exceeds($capability)`              | Checks if the value is greater than the named capability.            |
-| `isEqualOrGreaterThan($capability)` | Checks if the value is equal or greater than the named capability.   |
-| `is($capability)`                   | Checks if the value is equal to the named capability, strictly .     |
-| `isNot($capability)`                | Checks if the value is not equal to the named capability, strictly . |
-| `isSameAs($capability)`             | Checks if the value is equal to the named capability.                |
-| `isEqualOrLessThan($capability)`    | Checks if the value is equal or less than the named capability.      |
-| `doesntExceeds($capability)`        | Checks if the value is equal or less than the named capability.      |
-| `isLessThan($capability)`           | Checks if the value is less than the named capability.               |
+| Method                              | Description                                                         |
+|-------------------------------------|---------------------------------------------------------------------|
+| `isGreaterThan($capability)`        | Checks if the value is greater than the named capability.           |
+| `exceeds($capability)`              | Checks if the value is greater than the named capability.           |
+| `isEqualOrGreaterThan($capability)` | Checks if the value is equal or greater than the named capability.  |
+| `is($capability)`                   | Checks if the value is equal to the named capability, strictly.     |
+| `isNot($capability)`                | Checks if the value is not equal to the named capability, strictly. |
+| `isSameAs($capability)`             | Checks if the value is equal to the named capability.               |
+| `isEqualOrLessThan($capability)`    | Checks if the value is equal or less than the named capability.     |
+| `doesntExceeds($capability)`        | Checks if the value is equal or less than the named capability.     |
+| `isLessThan($capability)`           | Checks if the value is less than the named capability.              |
 
 ## Authorization
 
-This package includes a lot of helpers to authorize actions over Plans and Subscriptions. All of those are managed vía the `SubscriptionPolicy` and `PlanPolicy` policy classes that should be installed in `app\Policies`.
+This package includes a lot of helpers to authorize actions over Plans and Subscriptions. All of those are managed vía the `SubscriptionPolicy` and `PlanPolicy` [policy classes](https://laravel.com/docs/authorization#creating-policies) that should be already [installed](#set-up) in `app\Policies`.
 
 | Method                               | Description                                                          |
 |--------------------------------------|----------------------------------------------------------------------|
@@ -998,7 +1037,7 @@ public function haveUpgradeDiscount($user, Subscription $subscription): bool
 }
 ```
 
-Then, easily use in your application as with any authorization gate:
+Then, you can easily use the newly created gate in your application:
 
 ```blade
 @can('haveUpgradeDiscount', $user->subscription)
@@ -1020,43 +1059,97 @@ php artisan subscriptions:prune
 
 This package fires the following self-explanatory events:
 
-| Event                    | Description                                                        |
-|--------------------------|--------------------------------------------------------------------|
-| `OnDemandPlanCreated`    | A new on-demand Plan was created.                                  |
-| `SubscriberAttached`     | An existing subscription was attached to an entity.                |
-| `SubscriberDetached`     | An existing subscription was detached to an entity.                |
-| `SubscriptionCancelled`  | An existing subscription was marked as cancelled.                  |
-| `SubscriptionChanged`    | An existing subscription was changed to another Plan.              |
-| `SubscriptionCreated`    | A new subscriptions was created for the entity for the given Plan. |
-| `SubscriptionDowngraded` | An existing subscription was replaced for a new "worse" one.       |
-| `SubscriptionRenewed`    | An existing subscription was renewed for a new cycle.              |
-| `SubscriptionTerminated` | An existing subscription was terminated.                           |
-| `SubscriptionUpgraded`   | An existing subscription was replaced for a new "better" one.      |
+| Event                    | Description                                                   |
+|--------------------------|---------------------------------------------------------------|
+| `OnDemandPlanCreated`    | A new on-demand Plan was created.                             |
+| `SubscriberAttached`     | An existing subscription was attached to an entity.           |
+| `SubscriberDetached`     | An existing subscription was detached to an entity.           |
+| `SubscriptionCancelled`  | An existing subscription was marked as cancelled.             |
+| `SubscriptionChanged`    | An existing subscription was changed to another Plan.         |
+| `SubscriptionCreated`    | A new subscription was created.                               |
+| `SubscriptionDowngraded` | An existing subscription was replaced for a new "worse" one.  |
+| `SubscriptionRenewed`    | An existing subscription was renewed for a new cycle.         |
+| `SubscriptionTerminated` | An existing subscription was terminated.                      |
+| `SubscriptionUpgraded`   | An existing subscription was replaced for a new "better" one. |
 
-## Subscribers default model
+## Polymorphic relations
 
-When using the `Subscription` model, you can query the subscribers using `subscribers()`, which should be the _sane_ way to get all the subscribers for a subscription.
+To use polymorphic relations, use the `Subscription::addPolymorphicRelations()` to add the models you plan to attach to the Subscription model. You can do this in your `AppServiceProvider`.
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
+use App\Models\Director;
+use App\Models\Producer;
+use App\Models\Actor;
 
-$subscribers = Subscription::first()->subscribers()->get();
+public function boot()
+{
+    Subscription::macroPolymorphicRelations([
+        'producers' => Producer::class,
+        'actors' => Actor::class,
+        'director' => Director::class,
+    ]);
+    
+    // ...
+}
 ```
 
-This works seamlessly thanks because the `$defaultSubscriberModel` points to `App\Models\User`, which is the default model for users in a fresh Laravel installation. If you're using a different model to attach to subscriptions, you may change it:
+Once it's done, you can easily access these polymorphic relations like you would normally do using Eloquent Models. These new methods you register will even support [eager-loading](https://laravel.com/docs/9.x/eloquent-relationships#eager-loading).
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
 
-Subscription::$defaultSubscriber = \App\Models\Subscriber::class;
+$subscription = Subscription::with('actors')->find('bc728326...');
+
+foreach ($subscription->actors as $actor) {
+    echo $actor->name;
+};
 ```
 
-Alternatively, you can retrieve distinct subscribers types by just using a model name or object as argument.
+If you like manual control, you can also use an array with both the model class name and a callback to use as a relation accessor.
+
+```php
+use Laragear\Subscriptions\Models\Subscription;
+use App\Models\Producer;
+use App\Models\Actor;
+
+public function boot()
+{
+    Subscription::macroPolymorphicRelations([
+        'actors' => Actor::class,
+        'producers' => [
+            Producer::class, 
+            fn() => $this->morphedByMany(Producer::class, 'subscribable')->credited()
+        ];
+    ]);
+    
+    // ...
+}
+```
+
+### Retrieving polymorphic records manually
+
+If you're using polymorphic subscribers, the default model is `App\Models\User`, so the `subscribers` property will retrieve all models for that polymorphic relation, unless you change it to other model.
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
 
-$companies = Subscription::find(1)->subscribers(\App\Models\Company::class)->get();
+$subscription = Subscription::find('bc728326...');
+
+$users = $subscription->subscribers;
+```
+
+When not using the default model, you will need to use the `subscribers()` with the model name or instance to retrieve the different types of subscribers.
+
+```php
+use Laragear\Subscriptions\Models\Subscription;
+use App\Models\Cameraman;
+use App\Models\Photographer;
+
+$subscription = Subscription::find('bc728326...');
+
+$cameramen = $subscription->subscribers(Cameraman::class)->get();
+$photographers = $subscription->subscribers(Photographer::class)->get();
 ```
 
 ## Testing
