@@ -94,7 +94,7 @@ php artisan migrate
 
 > Migrations create 3 tables: `plans`, `subscribable` and `subscriptions`.
 
-Finally, add the `WithSubscriptions` trait to your models, which will enable the entity to handle subscriptions easily with just a few methods.
+4. Finally, add the `WithSubscriptions` trait to your models, which will enable the entity to handle subscriptions easily with just a few methods.
 
 ```php
 namespace App\Models;
