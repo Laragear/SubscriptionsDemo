@@ -24,11 +24,30 @@ return "You are now subscribed to $subscription->name!";
 
 ## Installation
 
-You can install the package via composer:
+You can install the package via Composer. Open your `composer.json` and point the location of the private repository under the `repositories` key.
+
+```json
+{
+    // ...
+    "repositories": [
+        {
+            "type": "vcs",
+            "name": "laragear/subscriptions",
+            "url": "https://github.com/laragear/subscriptions.git"
+        }
+    ],
+}
+```
+
+Then call Composer to retrieve the package.
 
 ```bash
 composer require laragear/subscriptions
 ```
+ 
+ You will be prompted for a personal access token. If you don't have one, follow the instructions or [create one here](https://github.com/settings/tokens/new?scopes=repo). It takes just seconds.
+
+ > **Note** You can find more information about in [this article](https://darkghosthunter.medium.com/php-use-your-private-repository-in-composer-without-ssh-keys-da9541439f59).
 
 ## How this works?
 
@@ -131,6 +150,8 @@ Plan::called('Free')->capability('deliveries', 1)->monthly();
 Plan::called('Basic')->capability('deliveries', 8)->monthly();
 ```
 
+> **Warning** Plans require an interval. You will get an error if the interval is not set. You can easily make lifetime plans by [renewing them automatically](#renew--extend) in your app.
+
 Once plans are _declared_, we will need to push them into the database. For that, we can use `subscriptions:plans`. The command will read the plans and create them into the database.
 
 ```shell
@@ -156,7 +177,7 @@ Capabilities can be set using `capability()`. For example, we will set the numbe
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-Plan::called('Basic')->capability('deliveries', 8)->save();
+Plan::called('Basic')->capability('deliveries', 8)->monthly()->save();
 ```
 
 You can also set a list of capabilities in one go using an array.
@@ -170,7 +191,9 @@ Plan::called('Basic')->capability([
         'priority' => 'normal',
         'groceries' => false,
     ]
-])->save();
+])  
+    ->monthly()
+    ->save();
 ```
 
 Capabilities can be accessed using `dot.notation`. In your subscription, you can access them later with `capability()`.
@@ -189,7 +212,7 @@ use Laragear\Subscriptions\Facades\Plan;
 Plan::called('Free')->withMetadata([
     'payment' => 'not_allowed',
     'remember' => 'weekly',
-]);
+])->monthly();
 ```
 
 Metadata is just a `Collection` instance, so it's easy to retrieve and save values to it later in the Subscription.
@@ -207,7 +230,7 @@ use Laragear\Subscriptions\Facades\Plan;
 
 Plan::called('Basic')->withColumns([
     'price' => 29.90,
-]);
+])->monthly();
 ```
 
 Later, these values can be accessed like a normal property from its Subscription, as these values will be copied over them as long the column exists.
@@ -226,15 +249,15 @@ With `group()` and the name on the group, you can add your Plans from the most b
 use Laragear\Subscriptions\Facades\Plan;
 
 Plan::group('deliveries', [
-    0 => Plan::called('Free')->capability('deliveries', 1),
-    1 => Plan::called('Basic')->capability('deliveries', 8),
+    0 => Plan::called('Free')->capability('deliveries', 1)->monthly(),
+    1 => Plan::called('Basic')->capability('deliveries', 8)->monthly(),
 ]);
 ```
 
 With that, users won't be able to downgrade to a lesser plan, or subscribe to two plans of the same group, when checking these actions with the [authorization gates](#authorization).
 
 ```php
-use Laragear\Subscriptions\Facades\Plan;
+use Laragear\Subscriptions\Models\Plan;
 use Illuminate\Support\Facades\Auth;
 
 $plan = Plan::find(2);
@@ -246,14 +269,14 @@ if (Auth::user()->cannot('upgradeTo', $plan)) {
 Auth::user()->upgradeTo($plan);
 ```
 
-Since downgrades are disabled, you can enable them using `downgradeableGroup()`.
+Since downgrades are disabled, you can enable them using `downgradeableGroup()` through the `Plan` Facade.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
 Plan::downgradeableGroup('deliveries', [
-    0 => Plan::called('Free')->capability('deliveries', 1),
-    1 => Plan::called('Basic')->capability('deliveries', 8),
+    0 => Plan::called('Free')->capability('deliveries', 1)->monthly(),
+    1 => Plan::called('Basic')->capability('deliveries', 8)->monthly(),
 ]);
 ```
 
@@ -268,13 +291,13 @@ Use the `sharedUpTo()` to set a number of maximum entities to share the subscrip
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-Plan::called('Newlyweds special')->sharedUpTo(2);
+Plan::called('Newlyweds special')->monthly()->sharedUpTo(2);
 ```
 
 An entity will be still able to be attached to another entity subscription, even if it's the same Plan and is marked as _unique_. To disable this, you may want to check if the entity already is attached to Plan before attaching it to another:
 
 ```php
-use Laragear\Subscriptions\Facades\Plan;
+use Laragear\Subscriptions\Models\Plan;
 use App\Models\User;
 
 if (User::find(1)->hasOneSubscription()) {
@@ -295,7 +318,7 @@ Normally, the shared subscription slots can only be filled by the admin, but you
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-Plan::called('Sunday golf')->openlySharedUpTo(4);
+Plan::called('Sunday golf')->monthly()->openlySharedUpTo(4);
 ```
 
 Later, you can use the [convenient authorization gates](#authorization) to check if a user can be attached to an open or closed subscription
@@ -370,7 +393,7 @@ Plans can also be limited by a number of subscribers. For example, we can limit 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-Plan::called('Premium')->limitedTo(10));
+Plan::called('Premium')->monthly()->limitedTo(10));
 ```
 
 By default, plans will be always subscribable as long there is free slots. You can disable freeing slots with `permanentlyLimitedTo()`. Even if subscriber drops from the Plan, nobody will be able to subscribe to it once all slots were taken.
@@ -378,7 +401,7 @@ By default, plans will be always subscribable as long there is free slots. You c
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-Plan::called('Premium')->permanentlyLimitedTo(10);
+Plan::called('Premium')->monthly()->permanentlyLimitedTo(10);
 ```
 
 This makes the `subscribeTo` [authorization gate](#authorization) fail if there are no free slots.  
@@ -388,7 +411,7 @@ Slots can be resized later manually in the Plan later.
 ```php
 use Laragear\Subscriptions\Models\Plan;
 
-$plan = Plan::first();
+$plan = Plan::find(1);
 
 // Resize the limit of subscriptions
 $plan->resizeLimit(20);
@@ -433,7 +456,7 @@ All plans are retrieved and shown publicly, but you can hide plans using `hidden
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-Plan::called('Unrestricted plan')->hidden();
+Plan::called('Unrestricted plan')->monthly()->hidden();
 ```
 
 Then, in your query, you can use `withHidden()` to include hidden plans.
@@ -453,7 +476,7 @@ By default, an entity can be subscribed to multiple Plans simultaneously. For ex
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-$plan = Plan::called('Free')->unique();
+$plan = Plan::called('Free')->monthly()->unique();
 ```
 
 When checking for permissions using the [authorization gate](#authorization), the user won't be able to subscribe if the child subscription is marked as unique.
@@ -475,19 +498,31 @@ Alternatively, you may want to use [groups](#plan-groups-and-levels) to make uni
 
 While your plans with a set amount of capabilities may work for many subscribers, you may find your app in a position to offer "customizable" plans. You can create these like with any other plans, on demand.
 
-For example, let's say we want to let a company create its own plan. It's easy as just building a new plan, and attaching it immediately to the company using `createFor()`.
+For example, let's say we want to let a company create its own plan through a web interface. It's easy as just building a new plan, and attaching it immediately to the company using `createFor()`.
 
 ```php
-use Laragear\Subscriptions\Facades\Plan;
 use App\Models\Company;
+use Illuminate\Http\Request;
+use Laragear\Subscriptions\Facades\Plan;
 
-$company = Company::find(1);
-
-$subscription = Plan::called('Custom Plan for Company LLC.')->capabilities([
-    'deliveries' => 50,
-    'on_weekdays' => true,
-    'priority' => 1.0,
-])->createFor($company);
+public function createPlan(Request $request)
+{
+    $request->validate([
+        // ...
+    ]);
+    
+    $company = Company::find($request->company_id);
+    
+    $subscription = Plan::called("Custom Plan for $company->name")->capabilities([
+        'deliveries' => 50,
+        'on_weekdays' => 50,
+        'priority' => 1.0,
+    ])
+        ->monthly()
+        ->createFor($company);
+    
+    return 'Your are now subscribed to a custom plan for you!';
+}
 ```
 
 What `createFor()` does is relatively simple:
@@ -501,8 +536,11 @@ You can also combine the Plan with `unique()` make the subscriber be only subscr
 use Laragear\Subscriptions\Facades\Plan;
 
 $subscription = Plan::called('Custom for Company LLC.')->capabilities([
-    // ...
-])->unique()->createFor($company);
+        // ...
+    ])
+    ->monthly()
+    ->unique()
+    ->createFor($company);
 ```
 
 ### Custom ID
@@ -539,7 +577,7 @@ After your plans are set, the next step is to subscribe entities, like a user or
 The most common task is subscribing to a Plan. You can use `subscribeTo()` with the Plan instance. It returns a persisted `Subscription` model.
 
 ```php
-use Laragear\Subscriptions\Facades\Plan;
+use Laragear\Subscriptions\Models\Plan;
 use Illuminate\Support\Facades\Auth;
 
 $plan = Plan::find(3);
