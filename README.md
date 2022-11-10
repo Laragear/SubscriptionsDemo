@@ -667,6 +667,8 @@ $subscription = Auth::user()->subscribeTo($plan)->postponedTo(function ($start) 
 $subscription->save();
 ```
 
+When the subscription is postponed, it won't be active until the date it was postponed to.
+
 ### Push cycle start
 
 The Subscription start is set from the exact moment is created. You can "extend" the subscription cycle to accommodate a date (like, from next monday) using `pushedTo()` and the number of days, or a function that returns the date to extend to and start the cycle.
@@ -690,6 +692,27 @@ For example, if the user subscribes on Friday 24th at 9:30 AM, the subscription 
 
 > **Warning**
 > If you need to postpone the subscription, ensure you postpone it _after_ pushing it further.
+
+### Modifying the Interval
+
+If you need to change the subscription interval to be different from the parent Plan, use `updateInterval()` with the interval you want to force into the subscription. 
+
+```php
+use Laragear\Subscriptions\Models\Plan;
+use Illuminate\Support\Facades\Auth;
+use Carbon\CarbonInterval;
+
+// Subscribe the user to a monthly plan.
+$subscription = Auth::user()->subscribeTo(Plan::find(1));
+
+// Replace the monthly interval to yearly.
+$subscription->updateInterval(
+    CarbonInterval::create(1)
+);
+```
+
+> **Warning**
+> This only works with freshly created subscriptions. Forcefully changing the interval **after** the first cycle will corrupt the cycle count and start/end dates.
 
 ### Retrieving the subscription
 
