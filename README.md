@@ -1,4 +1,5 @@
 # Subscriptions
+[![Latest stable test run](https://github.com/Laragear/Subscriptions/workflows/Tests/badge.svg)](https://github.com/Laragear/Subscriptions/actions)
 
 Manage subscriptions on-premises, without any payment systems!
 
@@ -6,21 +7,21 @@ Manage subscriptions on-premises, without any payment systems!
 use Illuminate\Support\Facades\Auth;
 use Laragear\Subscriptions\Models\Plan;
 
-$subscription = Auth::user()->subscribeTo(Plan::find(1));
+$subscription = Auth::user()->subscribeTo(Plan::find('b6954722...'));
 
 return "You are now subscribed to $subscription->name!";
 ```
 
-## [Download it](https://github.com/sponsors/DarkGhostHunter/sponsorships?sponsor=DarkGhostHunter&tier_id=195145&preview=false)
+## Thanks to you!
 
-[![](sponsors.png)](https://github.com/sponsors/DarkGhostHunter/sponsorships?sponsor=DarkGhostHunter&tier_id=195145&preview=false)
+[![](.github/assets/supported.png)](https://github.com/sponsors/DarkGhostHunter)
 
-[Become a Sponsor and get instant access to this package](https://github.com/sponsors/DarkGhostHunter/sponsorships?sponsor=DarkGhostHunter&tier_id=195145&preview=false).
+You're reading this because you're supporting me and this package. Your support allows me to keep this package free, up-to-date and maintainable. Thanks! I mean it!
 
 ## Requirements
 
-* PHP 8.0
-* Laravel 9.x
+* PHP 8.0 or later
+* Laravel 9, 10 or later
 
 ## Installation
 
@@ -47,7 +48,8 @@ composer require laragear/subscriptions
 
 You will be prompted for a personal access token. If you don't have one, follow the instructions or [create one here](https://github.com/settings/tokens/new?scopes=repo). It takes just seconds.
 
-> **Info** 
+> **Info**
+> 
 > You can find more information about in [this article](https://darkghosthunter.medium.com/php-use-your-private-repository-in-composer-without-ssh-keys-da9541439f59).
 
 ## How this works?
@@ -102,7 +104,10 @@ use Laragear\Subscriptions\Models\Subscription;
 $actors = Subscription::find('bc728326...')->actors;
 ```
 
+These are methods that use [dynamic relationships](https://laravel.com/docs/10.x/eloquent-relationships#dynamic-relationships) but with a more complete relation callback and `name => class` convenience.
+
 > **Info**
+> 
 > More details in the [polymorphic section](#polymorphic-relations). Don't worry, is just some paragraphs with code.
 
 3. If you don't require any further change to the migrations files, like [adding custom columns](#custom-columns) to handle prices, or changing the foreign key to UUID, you can just migrate your database tables like it was another day in the office:
@@ -112,6 +117,7 @@ php artisan migrate
 ```
 
 > **Check**
+> 
 > Migrations create 3 tables: `plans`, `subscribable` and `subscriptions`.
 
 4. Finally, add the `WithSubscriptions` trait to your models, which will enable the entity to handle subscriptions easily with just a few methods.
@@ -153,7 +159,8 @@ Plan::called('Free')->capability('deliveries', 1)->monthly();
 Plan::called('Basic')->capability('deliveries', 8)->monthly();
 ```
 
-> **Warning** 
+> **Warning**
+> 
 > Plans require an interval. You will get an error if the interval is not set. You can easily make lifetime plans by [renewing them automatically](#renew--extend) in your app.
 
 Once plans are _declared_, we will need to push them into the database. For that, we can use `subscriptions:plans`. The command will read the plans and create them into the database.
@@ -264,7 +271,7 @@ With that, users won't be able to downgrade to a lesser plan, or subscribe to tw
 use Laragear\Subscriptions\Models\Plan;
 use Illuminate\Support\Facades\Auth;
 
-$plan = Plan::find(2);
+$plan = Plan::find('b6954722...');
 
 if (Auth::user()->cannot('upgradeTo', $plan)) {
     return "You cannot upgrade to the $plan->name.";
@@ -285,6 +292,7 @@ Plan::downgradeableGroup('deliveries', [
 ```
 
 > **Info**
+> 
 > This doesn't remove the ability for an entity to subscribe to another Plan outside the group.
 
 ### Shareable subscriptions
@@ -309,7 +317,7 @@ if (User::find(1)->hasOneSubscription()) {
     return "The user cannot be attached to two or more active subscriptions.";
 }
 
-$plan = Plan::find(3);
+$plan = Plan::find('b6954722...');
 
 if (User::find(2)->isSubscribedTo($plan)) {
     return "The user is already subscribed to $plan->name.";
@@ -326,7 +334,7 @@ use Laragear\Subscriptions\Facades\Plan;
 Plan::called('Sunday golf')->monthly()->openlySharedUpTo(4);
 ```
 
-Later, you can use the [convenient authorization gates](#authorization) to check if a user can be attached to an open or closed subscription
+Later in your app, you can use the [convenient authorization gates](#authorization) to check if a user can be attached to an open or closed subscription:
 
 ```php
 if ($user->cant('attachTo', [$subscription, $user])) {
@@ -334,15 +342,17 @@ if ($user->cant('attachTo', [$subscription, $user])) {
 }
 ```
 
-The subscription can be closed or open again using `dontShareOpenly()` and `shareOpenly()`.
+You can programmatically open and close a subscription with `shareOpenly()` and `dontShareOpenly()`, respectively:
 
 ```php
+$user->subscription->shareOpenly();
+
 $user->subscription->dontShareOpenly();
 ```
 
 ### Renewal cycle
 
-One problem all Plans have is the renewal time. Laragear's Subscription package fixes this with a multitude of helpers to set the interval which the Plan can be renewed.
+One problem that Laragear Subscriptions tackle is setting by how much a Plan cycle runs before having to be renewed. You have access to a multitude of helpers to set that interval.
 
 | Method            | Description                               |
 |-------------------|-------------------------------------------|
@@ -370,6 +380,7 @@ Plan::called('Special')->every(CarbonInterval::month()->addDays(5))->save();
 ```
 
 > **Check**
+> 
 > Monthly intervals never overflow to the next month. For example, a monthly subscription that starts 31st of January will expire at 28th/29th of February, and continue the 31st of March.
 
 #### Not renewable plans
@@ -384,7 +395,7 @@ Plan::called('Basic')->monthly();
 Plan::called('Trial')->weekly()->notRenewable();
 ```
 
-You can also use the helpers `forOnlyOneDay()`, `forOnlyOneWeek()` and `forOnlyOneMonth()` to create not-renewable plans for one day, week or month, respectively.
+You can also use the helpers `forOnlyOneDay()`, `forOnlyOneWeek()`, and `forOnlyOneMonth()` to create not-renewable plans for one day, week or month, respectively.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
@@ -394,7 +405,7 @@ Plan::called('Trial')->forOnlyOneWeek();
 
 ### Plan subscribers limit
 
-Plans can also be limited by a number of subscribers. For example, we can limit the number of subscriptions for a given Plan using `limitedTo()` and the amount of subscriptions to hold.
+Plans can have a limited number of subscriptions. For example, we may set a "Premium" to not have more than 10 Subscriptions using `limitedTo()`.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
@@ -402,7 +413,7 @@ use Laragear\Subscriptions\Facades\Plan;
 Plan::called('Premium')->monthly()->limitedTo(10));
 ```
 
-By default, plans will be always subscribable as long there is free slots. You can disable freeing slots with `permanentlyLimitedTo()`. Even if subscriber drops from the Plan, nobody will be able to subscribe to it once all slots were taken.
+By default, a Plan will be always subscribable as long there is slots available. A slot is freed when its Subscription is no longer active. You may disable freeing slots with `permanentlyLimitedTo()`: even if a Subscription is cancelled, nobody will be able to subscribe to it once all slots were taken.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
@@ -410,14 +421,20 @@ use Laragear\Subscriptions\Facades\Plan;
 Plan::called('Premium')->monthly()->permanentlyLimitedTo(10);
 ```
 
-This makes the `subscribeTo` [authorization gate](#authorization) fail if there are no free slots.
+For example, if the 10th subscription is no longer active, no new Subscriptions for the Plan will be able to be created. This makes the `subscribeTo` [authorization gate](#authorization) fail if there are no free slots.
 
-Slots can be resized later manually in the Plan later.
+```php
+if (Auth::user()->cant('subscribeTo', $plan) && $plan->isFilled()) {
+    return 'There is no more available Subscriptions for this Plan.';
+}
+```
+
+The Plan's Subscription limit can be resized later manually in the Plan Model, from anywhere in your application.
 
 ```php
 use Laragear\Subscriptions\Models\Plan;
 
-$plan = Plan::find(1);
+$plan = Plan::find('b6954722...');
 
 // Resize the limit of subscriptions
 $plan->resizeLimit(20);
@@ -427,7 +444,8 @@ $plan->removeLimit();
 ```
 
 > **Check**
-> Resizing a Plan doesn't unsubscribe users from it.
+> 
+> Resizing a Plan doesn't unsubscribe users from it, even if the new limit is lower than the active Subscriptions.
 
 ### Locking and Unlocking plans
 
@@ -437,16 +455,17 @@ Plans are by default open to all subscribers, but you can manually lock them usi
 use Laragear\Subscriptions\Models\Plan;
 use Illuminate\Support\Facades\Auth;
 
-$plan = Plan::find(1);
+$plan = Plan::find('b6954722...');
 
 $plan->lock();
 
-if (Auth::user()->cant('subscribeTo', $plan)) {
+if (Auth::user()->cant('subscribeTo', $plan) && $plan->isLocked()) {
     return 'This plan has been locked for new subscribers.';
 }
 ```
 
 > **Check**
+> 
 > Locking a plan disables new subscriptions, or subscription upgrades to it, but not renewals.
 
 To revert the operation, use `unlock()`.
@@ -454,7 +473,7 @@ To revert the operation, use `unlock()`.
 ```php
 use Laragear\Subscriptions\Models\Plan;
 
-Plan::find(1)->unlock();
+Plan::find('b6954722...')->unlock();
 ```
 
 ### Hidden plans
@@ -476,32 +495,35 @@ $plans = Plan::withHidden()->get();
 ```
 
 > **Check**
-> It's not necessary to use `withHidden()` when retrieving the Plan from the subscription instance, the underlying scope is automatically removed.
+> 
+> It's not necessary to use `withHidden()` when retrieving the Plan from the `Subscription` model instance, the underlying scope is automatically removed.
 
 ### Unique plans
 
-By default, an entity can be subscribed to multiple Plans simultaneously. For example, a user can be subscribed to a "Food deliveries" and "Groceries deliveries" at the same time. To enable _unique plans_ to only let an entity be subscribed to a single Plan across all the application, using `unique()`.
+By default, an entity can be subscribed to multiple Plans simultaneously. For example, a user can be subscribed to a "Food deliveries" and "Groceries deliveries" at the same time.
+
+Sometimes you will want to not allow a user to subscribe to other Plans. You may set that Plan to be _unique_, meaning, the user won't be able to subscribe to any other plans as long it's subscribed to that unique plan. This can be done with `unique()` on the plan itself.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-$plan = Plan::called('Free')->monthly()->unique();
+$plan = Plan::called('All groceries')->monthly()->unique();
 ```
 
-When checking for permissions using the [authorization gate](#authorization), the user won't be able to subscribe if the child subscription is marked as unique.
+When checking for permissions using the [authorization gate](#authorization), the user won't be able to subscribe if the Plan is subscribed to was marked as unique.
 
 ```php
 use Laragear\Subscriptions\Models\Plan;
 use Illuminate\Support\Facades\Auth;
 
-$plan = Plan::find(1);
+$plan = Plan::find('b6954722...');
 
-if (Auth::user()->cant('subscribeTo', $plan)) {
-    return "You subscription doesn't allows to subscribe to another Plan".;
+if (Auth::user()->cant('subscribeTo', $plan) && Auth::user()->subscription->isUnique()) {
+    return "You cannot be subscribed to any other Plan.".;
 }
 ```
 
-Alternatively, you may want to use [groups](#plan-groups-and-levels) to make unique plans inside given group of plans.
+Alternatively, you may want to use [groups](#plan-groups-and-levels) to make unique plans only inside given group of plans.
 
 ### Custom plans
 
@@ -537,9 +559,9 @@ public function createPlan(Request $request)
 What `createFor()` does is relatively simple:
 
 - It [hides the plan](#hidden-plans).
-- It locks the plan.
+- It [locks the plan](#locking-and-unlocking-plans).
 
-You can also combine the Plan with `unique()` make the subscriber be only subscribed to that Plan only.
+You can also combine the Plan with `unique()` to make the subscriber be only subscribed to that Plan only.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
@@ -567,7 +589,7 @@ Plan::$useUuid = function (Plan $plan) {
 }
 ```
 
-If you want to use the [_ordered UUID_](https://laravel.com/docs/helpers#method-str-ordered-uuid) from Laravel, just call `Plans::useUuidOrdered()`.
+If you want to use the [_ordered UUID_](https://laravel.com/docs/10.x/helpers#method-str-ordered-uuid) from Laravel, just call `Plans::useUuidOrdered()`.
 
 ```php
 use Laragear\Subscriptions\Models\Plan;
@@ -581,6 +603,18 @@ Subscription::useOrderedUuid();
 
 After your plans are set, the next step is to subscribe entities, like a user or a company. It doesn't matter which model you set to be subscribed, as this package handles subscribers as a polymorphic relationship.
 
+### Understanding Subscriptions
+
+A Subscriptions contains some pieces of additional information to manage temporal calculations, apart from the data copied from the Plan it belongs to:
+
+- `begins_at`: The date from when cycles are calculated from.
+- `starts_at`: The current cycle start.
+- `ends_at`: The current cycle end.
+- `cycles`: The number of cycles since the subscription began. 
+- `grace_ends_at`: The additional grace time after the cycle end to consider the Subscription _active_, if any.
+
+You're free to check this data in your Subscription model instance, but don't change it unless you know what you're doing. Instead, use the helpers, which will make modifying a Subscription painless.
+
 ### Subscribing to a Plan
 
 The most common task is subscribing to a Plan. You can use `subscribeTo()` with the Plan instance. It returns a persisted `Subscription` model.
@@ -589,7 +623,7 @@ The most common task is subscribing to a Plan. You can use `subscribeTo()` with 
 use Laragear\Subscriptions\Models\Plan;
 use Illuminate\Support\Facades\Auth;
 
-$plan = Plan::find(3);
+$plan = Plan::find('b6954722...');
 
 if (Auth::user()->cannot('subscribeTo', $plan)) {
     return "You cannot subscribe to the plan $plan->name.";
@@ -606,16 +640,16 @@ $subscription = $user->subscribeTo($plan, [
 ]);
 ```
 
-Alternatively, you can use the `Subscribe` facade to attach multiple entities to one subscription. When doing this, only the first entity will be considered the _admin_.
+Alternatively, you can use the `Subscribe` facade to attach multiple entities to one subscription, like when doing "Family" or "Team" plans. When doing this, only the first entity will be considered the _admin_.
 
 ```php
 use App\Models\User;
 use Laragear\Subscriptions\Models\Plan;
 use Laragear\Subscriptions\Facades\Subscribe;
 
-$plan = Plan::find(1);
+$plan = Plan::find('b6954722...');
 
-$users = User::where('is_vip')->lazy();
+$users = User::where('family', 'Doe Family')->sortBy('age', 'desc')->lazy();
 
 $subscription = Subscribe::to($plan, $users, [
     'metadata' => ['is_cool' => true]
@@ -634,7 +668,7 @@ use Illuminate\Support\Facades\Auth;
 Auth::user()->subscription->subscribable->metadata('is_cool'); // "false"
 ```
 
-You may set any metadata you want for that particular subscriber at subscribing time, or even when changing it. There is no need to add `is_admin` or `metadata`, as the pivot table already comes with these columns, but, for additional columns, you will have to edit the migration.
+You may set any metadata you want for that particular subscriber at subscribing time, or even when changing it. There is no need to add `is_admin` or `metadata`, as the pivot table already comes with these columns, but, for additional columns, you will have to [edit the migration](#set-up).
 
 ```php
 use Illuminate\Support\Facades\Auth;
@@ -648,9 +682,9 @@ $subscription = Auth::user()->subscribeTo(Plan::first(), pivotAttributes: [
 $subscription->subscribable->metadata('is_cool'); // "true"
 ```
 
-### Postponed start
+### Postponed beginning
 
-When a subscription is created, it starts immediately. You may want to defer the start of the subscription from the plan using `postponedTo()`, which moves the subscription start forward by an amount of days or a function that should return the moment when it will start.
+When a subscription is created, it starts immediately. You may want to defer the starting moment using `postponedTo()`, which moves the subscription starting date forward by an amount of days or a function that should return the moment when it will begin. Until then, the subscription won't be active.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
@@ -667,11 +701,13 @@ $subscription = Auth::user()->subscribeTo($plan)->postponedTo(function ($start) 
 $subscription->save();
 ```
 
-When the subscription is postponed, it won't be active until the date it was postponed to.
+If you're looking to only change from where the cycles should be calculated from, you may want to [push the cycle start forward](#push-cycle-start). 
 
 ### Push cycle start
 
-The Subscription start is set from the exact moment is created. You can "extend" the subscription cycle to accommodate a date (like, from next monday) using `pushedTo()` and the number of days, or a function that returns the date to extend to and start the cycle.
+The Subscription begins from the exact moment is created. You can "move" the subscription cycle to accommodate a date (like, from next monday) using `pushedTo()` and the number of days, or a function that returns the date to extend to and start the cycle.
+
+For example, let's assume a user subscribes on Friday 24th at 12:30 PM. By default, the next monthly cycle will start the same day at the next month. With `pushedTo()`, we can push the cycle start to Monday 27th 00:00. During this "extended" time, the Subscription will be considered active.
 
 ```php
 use Laragear\Subscriptions\Facades\Plan;
@@ -688,14 +724,13 @@ $subscription = Auth::user()->subscribeTo($plan)->pushedTo(function ($start) {
 $subscription->save();
 ```
 
-For example, if the user subscribes on Friday 24th at 9:30 AM, the subscription cycle is calculated using Monday 27th 00:00 as the starting point, but will start immediately.
-
 > **Warning**
+> 
 > If you need to postpone the subscription, ensure you postpone it _after_ pushing it further.
 
 ### Modifying the Interval
 
-If you need to change the subscription interval to be different from the parent Plan, use `updateInterval()` with the interval you want to force into the subscription. 
+If you need to change the subscription interval to be different from the parent Plan, use `updateInterval()` with the interval you want to force into the Subscription.
 
 ```php
 use Laragear\Subscriptions\Models\Plan;
@@ -703,15 +738,14 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\CarbonInterval;
 
 // Subscribe the user to a monthly plan.
-$subscription = Auth::user()->subscribeTo(Plan::find(1));
+$subscription = Auth::user()->subscribeTo(Plan::find('b6954722...'));
 
 // Replace the monthly interval to yearly.
-$subscription->updateInterval(
-    CarbonInterval::create(1)
-);
+$subscription->updateInterval(CarbonInterval::create(1));
 ```
 
 > **Warning**
+> 
 > This only works with freshly created subscriptions. Forcefully changing the interval **after** the first cycle will corrupt the cycle count and start/end dates.
 
 ### Retrieving the subscription
@@ -726,7 +760,7 @@ $user = User::find(1);
 $subscription = $user->subscription;
 ```
 
-For the case of users attached to multiple subscriptions, it always returns the latest subscribed from all active. You can use the ID of a subscription to retrieve it directly, as long it's active. It will also return `null` if there is no active subscription found.
+For the case of users attached to multiple subscriptions, it always returns the latest subscribed from all active. You can use the ID of a subscription to retrieve it directly, as long it's active. It will also return `null` if there is no active Subscription found.
 
 ```php
 use App\Models\User;
@@ -795,11 +829,12 @@ echo $user->subscription->renewBy(2)->ends_at; // "2020-04-30 23:59:59"
 ```
 
 > **Warning**
+> 
 > Since renewing a subscription removes the past [grace period](#grace-period), ensure you call `graceTo()` after renewing.
 
 ### Grace period
 
-When a Subscription is not renewed, the subscription will expire at the end of the cycle. This can be relatively problematic on some scenarios, for example when you expect users to renew their subscriptions in your premises on a weekend when the store is closed. To avoid this, you can set a grace period in which the subscription will stay active even if formerly expired.
+When a Subscription is not renewed, the subscription will expire at the end of the cycle, rendering it no-active. This can be relatively problematic on some scenarios, for example, when you don't expect users to renew their subscriptions in your premises on a weekend when the store is closed. To avoid this, you can set a grace period in which the subscription will stay active after the cycle has ended.
 
 You can use `graceTo()` with the amount of days to take as a grace period, or a function that returns the time the grace period should end.
 
@@ -815,7 +850,15 @@ Auth::user()
     ->save();
 ```
 
-Then, you can check if the subscription is on grace period or not using `isOnGracePeriod()`:
+If a subscription has a grace period or not, you can use `hasGracePeriod()` and `doesntHaveGracePeriod()`, respectively:
+
+```php
+if ($subscription->hasGracePeriod()) {
+    return 'Your subscription will terminate ' . $subscription->ends_at->diffForHumans();
+}
+```
+
+You can check if the subscription is on grace period or not using `isOnGracePeriod()` and `isNotOnGracePeriod()`, respectively:
 
 ```php
 if ($subscription->isOnGracePeriod()) {
@@ -823,7 +866,9 @@ if ($subscription->isOnGracePeriod()) {
 }
 ```
 
-> **Warning** Ensure that you use `graceTo()` after and subscription change, as changing to a new subscription, or renewing it, will invalidate the previous grace period.
+> **Warning** 
+> 
+> Ensure that you use `graceTo()` after and subscription change, as changing to a new subscription, or renewing it, will invalidate the previous grace period.
 
 ### Unsubscribe / Terminate
 
@@ -846,8 +891,14 @@ echo $user->subscription->isActive(); // false
 echo $user->subscription->isCancelled(); // true
 ```
 
-> **Note** 
-> Terminating a Subscription doesn't detach the admin from it, but it will detach the guest. This can be disabled with `terminate(true)` over the subscription.
+> **Note**
+> 
+> Terminating a Subscription doesn't detach the admin from it, but it will detach all other subscribers. This can be disabled with `terminate(true)` over the subscription.
+> 
+> ```php
+> $user->subscription->terminate(true);
+> ```
+> 
 
 #### Cancellation mark
 
@@ -866,7 +917,7 @@ echo $user->subscription->isCancelled(); // true
 
 ### Modifying the subscription
 
-Most of the subscription data is set at a plan-level. Laragear's Subscriptions package automatically copies over the Plan blueprint into the Subscription model, which allows you to modify it for a particular subscription instead of mistakenly propagate changes to all subscriptions.
+Most of the subscription data is set at a plan-level. Laragear's Subscriptions package automatically copies over the Plan data into the Subscription model, which allows you to modify a particular Subscription instead of mistakenly propagate changes to all Subscriptions.
 
 ```php
 $subscription->capabilities->set('deliveries', 20)->save();
@@ -879,7 +930,7 @@ You're free to edit the Subscription as you see fit. Remember calling `save()` t
 
 ### Moving the cycle start
 
-Moving the subscription cycle start it's usually a big problem, but sometimes you will need to change it for legal reasons or because a particular demand. The way Laragear's Subscription package deals with moving the cycle start is by extending the current cycle until the new date.
+Moving the subscription cycle start it's usually a big problem, but sometimes you will need to change it for legal reasons or because a particular demand. The way Laragear's Subscription package deals with moving the cycle start is by **extending the current cycle until the new date**.
 
 You only need to use `adjustStartTo()` with a new future date. The subscription will change at the date issued.
 
@@ -902,20 +953,20 @@ In the following example, the user will be charged up-front for the extended dat
 ```php
 use Illuminate\Support\Facades\Auth;
 
-// Rewinds the subscription 4 days forward from now, 1st of January. 
+// Today is 1st of January. We need the cycle to start from the 5th of each month. 
 $extended = Auth::user()->subscription->adjustStartTo(now()->day(5));
 
 // Multiply the days extended by the cost-per-day of the monthly subscription.
 $cost = $extended->totalDays * (29.90 / 30); // 3.98, if you're curious.
 
-return "You will be charged $ {$cost} to accommodate the cycle change. Next cycle will be charged the normally.";
+return "You will be charged $ {$cost} to accommodate the cycle change. Next cycle will be charged at the normal rate.";
 ```
 
 ### Shared subscriptions
 
-Normally, one entity will be tied to one subscription, but you can attach multiple entities to a subscription. You can use `attach()` over the Subscription using the entity to attach. It also accepts an optional array of attributes to set in the pivot table.
+Normally, one entity will be tied to one subscription, but you can attach multiple entities to a subscription, likely to create "Family" or "Teams" based Subscriptions. You can use `attach()` over the Subscription with entity to attach. It also accepts an optional array of attributes to set in the pivot table.
 
-This is useful to mix with an [authorization gate](#authorization) to check if the plan allows to be shared, and there are slots free to attach the user.
+This is useful to mix with an [authorization gate](#authorization) to check if the plan allows to be shared, and there are slots free to attach the entities.
 
 ```php
 use App\Models\User;
@@ -923,13 +974,13 @@ use Laragear\Subscriptions\Models\Subscription;
 use Illuminate\Support\Facades\Auth;
 
 $admin = Auth::user();
-$guest = User::find(4);
+$guests = User::find(4);
 
-if ($admin->cannot('attachTo', [$admin->subscription, $guest])) {
+if ($admin->cannot('attachTo', [$admin->subscription, $guests])) {
     return 'Only admins can attach users to this subscriptions.';
 }
 
-$admin->subscription->attach($guest);
+$admin->subscription->attach($guests);
 ```
 
 To remove an entity from the subscription, use `detach()` over the subscription and the entity.
@@ -955,21 +1006,19 @@ $admin->subscription->detach($guest);
 
 You can easily get how much of the cycle has been used or remains using `used()` and `unused()`, respectively. These return a `CarbonInterval` with the difference in time.
 
-For example, we can use the `unused()` interval to calculate an upgrade cost for other plan.
+For example, we can use the `unused()` interval to calculate how much an upgrade will cost for other Plan.
 
 ```php
 $user = User::find(1);
-
-if ($user->subscription->isFirstCycle()) {
-    return 'To be eligible for a discount, you must at least pay one new cycle.';
-}
 
 $price = 49.90 - $user->subscription()->unused()->days * 29.90;
 
 return "Upgrade now and pay a reduced price of $ $price.";
 ```
 
-> **Note** Intervals for `used()` and `unused()` return empty intervals if the subscription hasn't started or already ended.
+> **Note**
+> 
+> Intervals for `used()` and `unused()` return empty intervals if the subscription hasn't started or already ended.
 
 ### Upgrading / Downgrading
 
@@ -981,7 +1030,7 @@ use Laragear\Subscriptions\Models\Plan;
 
 $user = User::find(1);
 
-$plan = Plan::find(2);
+$plan = Plan::find('b6954722...');
 
 if ($user->cant('upgradeTo', $plan)) {
     return "You cannot upgrade to the plan $plan->name";
@@ -990,7 +1039,9 @@ if ($user->cant('upgradeTo', $plan)) {
 $upgraded = $user->changeTo($plan);
 ```
 
-> **Info** This will automatically migrate all attached entities to the new plan.
+> **Info**
+> 
+> This will automatically migrate all attached entities to the new Subscription, and keep the same _admin_.
 
 You can also change a subscription to another Plan manually using the `Change` facade.
 
@@ -999,14 +1050,18 @@ use Laragear\Subscriptions\Facades\Change;
 use Laragear\Subscriptions\Models\Plan;
 use Laragear\Subscriptions\Models\Subscription;
 
-$plan = Plan::find(2);
+$plan = Plan::find('b6954722...');
 
 $new = Change::to(Subscription::find('bc728326...'), $plan);
 ```
 
+> **Warning**
+> 
+> Changing a Subscription to another Plan creates a new Subscription. It doesn't change the current Subscription.
+
 ## Capabilities
 
-Subscriptions and Plans contain capabilities. This is copied directly from the Plan itself, and allows checking if an entity has certain power to do in your app.
+Subscriptions and Plans contain capabilities. This is copied directly from the Plan itself, and allows checking if an entity has certain power to do something in your app.
 
 You can check capabilities using `capability()` which returns the value of the capability. It also accepts a default value to return if the capability doesn't exist.
 
@@ -1022,19 +1077,23 @@ $max = $user->subscription->capability('deliveries', 0);
 return "You have made $count deliveries out of $max for this month.";
 ```
 
-You can use `capabilities` property directly to set a new value.
+You can use `capabilities` property directly to set a new value. For example, we can make a lottery to upgrade the deliveries amount for the winners.
 
 ```php
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Lottery;
 
 $subscription = Auth::user()->subscription;
 
-if (Lottery::seed(300)) {
-    $subscription->capabilities->set('deliveries', 20);
-    $subscription->save();
+return Lottery::odds(1, 20)
+    ->winner(function () use ($subscription) {
+        $subscription->capabilities->set('deliveries', 20)->save();
+        $subscription->save();
 
-    return 'You are the lucky winner! You now have 20 deliveries forever!';
-}
+        return 'You are the lucky winner! You now have 20 deliveries forever!';
+    })
+    ->loser(fn() => 'Better luck next time!')
+    ->choose();
 ```
 
 You can also rewrite the capabilities entirely by setting the `capabilities` property using an array.
@@ -1098,7 +1157,7 @@ if ($user->subscription->check($count)->exceeds('deliveries')) {
 
 ## Authorization
 
-This package includes a lot of helpers to authorize actions over Plans and Subscriptions. All of those are managed vía the `SubscriptionPolicy` and `PlanPolicy` [policy classes](https://laravel.com/docs/authorization#creating-policies) that should be already [installed](#set-up) in `app\Policies`.
+This package includes a lot of helpers to authorize actions over Plans and Subscriptions. All of those are managed viaa the `SubscriptionPolicy` and `PlanPolicy` [policy classes](https://laravel.com/docs/10.x/authorization#creating-policies) that should be already [installed](#set-up) in `app\Policies`.
 
 | Method                               | Description                                                          |
 |--------------------------------------|----------------------------------------------------------------------|
@@ -1191,7 +1250,7 @@ public function boot()
 }
 ```
 
-Once it's done, you can easily access these polymorphic relations like you would normally do using Eloquent Models. These new methods you register will even support [eager-loading](https://laravel.com/docs/9.x/eloquent-relationships#eager-loading).
+Once it's done, you can easily access these polymorphic relations like you would normally do using Eloquent Models. These new methods you register will even support [eager-loading](https://laravel.com/docs/10.x/eloquent-relationships#eager-loading).
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
@@ -1203,7 +1262,7 @@ foreach ($subscription->actors as $actor) {
 };
 ```
 
-If you like manual control, you can also use an array with both the model class name and a callback to use as a relation accessor.
+If you like to have manual control on the dynamic relations, you can also use an array with both the model class name and a callback to use as a relation builder.
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
@@ -1216,13 +1275,15 @@ public function boot()
         'actors' => Actor::class,
         'producers' => [
             Producer::class, 
-            fn() => $this->morphedByMany(Producer::class, 'subscribable')->credited()
+            fn($subscription) => $subscription->morphedByMany(Producer::class, 'subscribable')->credited()
         ];
     ]);
     
     // ...
 }
 ```
+
+While you can use [dynamic relationships](https://laravel.com/docs/10.x/eloquent-relationships#dynamic-relationships) directly,these methods add more data to the relationship, and makes the Subscription model aware of the relationship nature (monomorphic or polymorphic).
 
 ### Retrieving polymorphic records manually
 
@@ -1293,4 +1354,4 @@ If you discover any security related issues, please email darkghosthunter@gmail.
 
 This specific package version is licensed under the terms of the [MIT License](LICENSE.md), at time of publishing.
 
-[Laravel](https://laravel.com) is a Trademark of [Taylor Otwell](https://github.com/TaylorOtwell/). Copyright © 2011-2022 Laravel LLC.
+[Laravel](https://laravel.com) is a Trademark of [Taylor Otwell](https://github.com/TaylorOtwell/). Copyright © 2011-2023 Laravel LLC.
