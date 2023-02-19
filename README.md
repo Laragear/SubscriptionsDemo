@@ -1,5 +1,4 @@
 # Subscriptions
-[![Latest stable test run](https://github.com/Laragear/Subscriptions/workflows/Tests/badge.svg)](https://github.com/Laragear/Subscriptions/actions)
 
 Manage subscriptions on-premises, without any payment systems!
 
@@ -7,16 +6,16 @@ Manage subscriptions on-premises, without any payment systems!
 use Illuminate\Support\Facades\Auth;
 use Laragear\Subscriptions\Models\Plan;
 
-$subscription = Auth::user()->subscribeTo(Plan::find('b6954722...'));
+$subscription = Auth::user()->subscribeTo(Plan::find(1));
 
 return "You are now subscribed to $subscription->name!";
 ```
 
-## Thanks to you!
+## [Download it](https://github.com/sponsors/DarkGhostHunter/sponsorships?sponsor=DarkGhostHunter&tier_id=195145&preview=false)
 
-[![](.github/assets/supported.png)](https://github.com/sponsors/DarkGhostHunter)
+[![](sponsors.png)](https://github.com/sponsors/DarkGhostHunter/sponsorships?sponsor=DarkGhostHunter&tier_id=195145&preview=false)
 
-You're reading this because you're supporting me and this package. Your support allows me to keep this package free, up-to-date and maintainable. Thanks! I mean it!
+[Become a Sponsor and get instant access to this package](https://github.com/sponsors/DarkGhostHunter/sponsorships?sponsor=DarkGhostHunter&tier_id=195145&preview=false).
 
 ## Requirements
 
