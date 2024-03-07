@@ -19,8 +19,7 @@ return "You are now subscribed to $subscription->name!";
 
 ## Requirements
 
-* PHP 8.0 or later
-* Laravel 9, 10 or later
+* Laravel 10 or later
 
 ## Installation
 
@@ -47,7 +46,7 @@ composer require laragear/subscriptions
 
 You will be prompted for a personal access token. If you don't have one, follow the instructions or [create one here](https://github.com/settings/tokens/new?scopes=repo). It takes just seconds.
 
-> **Info**
+> [!TIP]
 > 
 > You can find more information about in [this article](https://darkghosthunter.medium.com/php-use-your-private-repository-in-composer-without-ssh-keys-da9541439f59).
 
@@ -103,9 +102,9 @@ use Laragear\Subscriptions\Models\Subscription;
 $actors = Subscription::find('bc728326...')->actors;
 ```
 
-These are methods that use [dynamic relationships](https://laravel.com/docs/10.x/eloquent-relationships#dynamic-relationships) but with a more complete relation callback and `name => class` convenience.
+These are methods that use [dynamic relationships](https://laravel.com/docs/11.x/eloquent-relationships#dynamic-relationships) but with a more complete relation callback and `name => class` convenience.
 
-> **Info**
+> [!TIP]
 > 
 > More details in the [polymorphic section](#polymorphic-relations). Don't worry, is just some paragraphs with code.
 
@@ -115,7 +114,7 @@ These are methods that use [dynamic relationships](https://laravel.com/docs/10.x
 php artisan migrate
 ```
 
-> **Check**
+> [!TIP]
 > 
 > Migrations create 3 tables: `plans`, `subscribable` and `subscriptions`.
 
@@ -158,7 +157,7 @@ Plan::called('Free')->capability('deliveries', 1)->monthly();
 Plan::called('Basic')->capability('deliveries', 8)->monthly();
 ```
 
-> **Warning**
+> [!WARNING]
 > 
 > Plans require an interval. You will get an error if the interval is not set. You can easily make lifetime plans by [renewing them automatically](#renew--extend) in your app.
 
@@ -290,7 +289,7 @@ Plan::downgradeableGroup('deliveries', [
 ]);
 ```
 
-> **Info**
+> [!IMPORTANT]
 > 
 > This doesn't remove the ability for an entity to subscribe to another Plan outside the group.
 
@@ -378,7 +377,7 @@ use Carbon\CarbonInterval;
 Plan::called('Special')->every(CarbonInterval::month()->addDays(5))->save();
 ```
 
-> **Check**
+> [!IMPORTANT]
 > 
 > Monthly intervals never overflow to the next month. For example, a monthly subscription that starts 31st of January will expire at 28th/29th of February, and continue the 31st of March.
 
@@ -442,7 +441,7 @@ $plan->resizeLimit(20);
 $plan->removeLimit();
 ```
 
-> **Check**
+> [!IMPORTANT]
 > 
 > Resizing a Plan doesn't unsubscribe users from it, even if the new limit is lower than the active Subscriptions.
 
@@ -463,7 +462,7 @@ if (Auth::user()->cant('subscribeTo', $plan) && $plan->isLocked()) {
 }
 ```
 
-> **Check**
+> [!IMPORTANT]
 > 
 > Locking a plan disables new subscriptions, or subscription upgrades to it, but not renewals.
 
@@ -493,7 +492,7 @@ use Laragear\Subscriptions\Models\Plan;
 $plans = Plan::withHidden()->get();
 ```
 
-> **Check**
+> [!TIP]
 > 
 > It's not necessary to use `withHidden()` when retrieving the Plan from the `Subscription` model instance, the underlying scope is automatically removed.
 
@@ -588,7 +587,7 @@ Plan::$useUuid = function (Plan $plan) {
 }
 ```
 
-If you want to use the [_ordered UUID_](https://laravel.com/docs/10.x/helpers#method-str-ordered-uuid) from Laravel, just call `Plans::useUuidOrdered()`.
+If you want to use the [_ordered UUID_](https://laravel.com/docs/11.x/helpers#method-str-ordered-uuid) from Laravel, just call `Plans::useUuidOrdered()`.
 
 ```php
 use Laragear\Subscriptions\Models\Plan;
@@ -723,7 +722,7 @@ $subscription = Auth::user()->subscribeTo($plan)->pushedTo(function ($start) {
 $subscription->save();
 ```
 
-> **Warning**
+> [!IMPORTANT]
 > 
 > If you need to postpone the subscription, ensure you postpone it _after_ pushing it further.
 
@@ -743,7 +742,7 @@ $subscription = Auth::user()->subscribeTo(Plan::find('b6954722...'));
 $subscription->updateInterval(CarbonInterval::create(1));
 ```
 
-> **Warning**
+> [!IMPORTANT]
 > 
 > This only works with freshly created subscriptions. Forcefully changing the interval **after** the first cycle will corrupt the cycle count and start/end dates.
 
@@ -827,7 +826,7 @@ You may also extend a subscription for more than one cycle using `renewBy()` alo
 echo $user->subscription->renewBy(2)->ends_at; // "2020-04-30 23:59:59"
 ```
 
-> **Warning**
+> [!IMPORTANT]
 > 
 > Since renewing a subscription removes the past [grace period](#grace-period), ensure you call `graceTo()` after renewing.
 
@@ -865,7 +864,7 @@ if ($subscription->isOnGracePeriod()) {
 }
 ```
 
-> **Warning** 
+> [!WARNING] 
 > 
 > Ensure that you use `graceTo()` after and subscription change, as changing to a new subscription, or renewing it, will invalidate the previous grace period.
 
@@ -890,7 +889,7 @@ echo $user->subscription->isActive(); // false
 echo $user->subscription->isCancelled(); // true
 ```
 
-> **Note**
+> [!IMPORTANT]
 > 
 > Terminating a Subscription doesn't detach the admin from it, but it will detach all other subscribers. This can be disabled with `terminate(true)` over the subscription.
 > 
@@ -1015,7 +1014,7 @@ $price = 49.90 - $user->subscription()->unused()->days * 29.90;
 return "Upgrade now and pay a reduced price of $ $price.";
 ```
 
-> **Note**
+> [!IMPORTANT]
 > 
 > Intervals for `used()` and `unused()` return empty intervals if the subscription hasn't started or already ended.
 
@@ -1038,7 +1037,7 @@ if ($user->cant('upgradeTo', $plan)) {
 $upgraded = $user->changeTo($plan);
 ```
 
-> **Info**
+> [!TIP]
 > 
 > This will automatically migrate all attached entities to the new Subscription, and keep the same _admin_.
 
@@ -1054,7 +1053,7 @@ $plan = Plan::find('b6954722...');
 $new = Change::to(Subscription::find('bc728326...'), $plan);
 ```
 
-> **Warning**
+> [!IMPORTANT]
 > 
 > Changing a Subscription to another Plan creates a new Subscription. It doesn't change the current Subscription.
 
@@ -1156,7 +1155,7 @@ if ($user->subscription->check($count)->exceeds('deliveries')) {
 
 ## Authorization
 
-This package includes a lot of helpers to authorize actions over Plans and Subscriptions. All of those are managed viaa the `SubscriptionPolicy` and `PlanPolicy` [policy classes](https://laravel.com/docs/10.x/authorization#creating-policies) that should be already [installed](#set-up) in `app\Policies`.
+This package includes a lot of helpers to authorize actions over Plans and Subscriptions. All of those are managed viaa the `SubscriptionPolicy` and `PlanPolicy` [policy classes](https://laravel.com/docs/11.x/authorization#creating-policies) that should be already [installed](#set-up) in `app\Policies`.
 
 | Method                               | Description                                                          |
 |--------------------------------------|----------------------------------------------------------------------|
@@ -1249,7 +1248,7 @@ public function boot()
 }
 ```
 
-Once it's done, you can easily access these polymorphic relations like you would normally do using Eloquent Models. These new methods you register will even support [eager-loading](https://laravel.com/docs/10.x/eloquent-relationships#eager-loading).
+Once it's done, you can easily access these polymorphic relations like you would normally do using Eloquent Models. These new methods you register will even support [eager-loading](https://laravel.com/docs/11.x/eloquent-relationships#eager-loading).
 
 ```php
 use Laragear\Subscriptions\Models\Subscription;
@@ -1282,7 +1281,7 @@ public function boot()
 }
 ```
 
-While you can use [dynamic relationships](https://laravel.com/docs/10.x/eloquent-relationships#dynamic-relationships) directly,these methods add more data to the relationship, and makes the Subscription model aware of the relationship nature (monomorphic or polymorphic).
+While you can use [dynamic relationships](https://laravel.com/docs/11.x/eloquent-relationships#dynamic-relationships) directly,these methods add more data to the relationship, and makes the Subscription model aware of the relationship nature (monomorphic or polymorphic).
 
 ### Retrieving polymorphic records manually
 
@@ -1353,4 +1352,4 @@ If you discover any security related issues, please email darkghosthunter@gmail.
 
 This specific package version is licensed under the terms of the [MIT License](LICENSE.md), at time of publishing.
 
-[Laravel](https://laravel.com) is a Trademark of [Taylor Otwell](https://github.com/TaylorOtwell/). Copyright © 2011-2023 Laravel LLC.
+[Laravel](https://laravel.com) is a Trademark of [Taylor Otwell](https://github.com/TaylorOtwell/). Copyright © 2011-2024 Laravel LLC.
