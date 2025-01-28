@@ -108,7 +108,7 @@ These are methods that use [dynamic relationships](https://laravel.com/docs/11.x
 > 
 > More details in the [polymorphic section](#polymorphic-relations). Don't worry, is just some paragraphs with code.
 
-3. If you don't require any further change to the migrations files, like [adding custom columns](#custom-columns) to handle prices, or changing the foreign key to UUID, you can just migrate your database tables like it was another day in the office:
+3. If you don't require any further [change to the migrations files](MIGRATIONS.md), you can just migrate your database tables like it was another day in the office:
 
 ```shell
 php artisan migrate
