@@ -19,7 +19,8 @@ return "You are now subscribed to $subscription->name!";
 
 ## Requirements
 
-* Laravel 11 or later.
+* PHP 8.4 or later
+* Laravel 12 or later.
 
 ## Installation
 
@@ -154,7 +155,7 @@ First, we need to create the Plans. We can go inside the `plans/plans.php` and c
 ```php
 use Laragear\Subscriptions\Facades\Plan;
 
-// Plan::called('Free')->capability('coolness', 10)->monthly();
+Plan::called('Free')->capability('coolness', 10)->monthly();
 ```
 
 > [!TIP]
@@ -364,21 +365,22 @@ $user->subscription->dontShareOpenly();
 
 One problem that Laragear Subscriptions fixes is setting by how much a Plan cycle runs before having to be renewed. You have access to a multitude of helpers to set that interval.
 
-| Method            | Description                               |
-|-------------------|-------------------------------------------|
-| `days($amount)`   | Sets a cycle based on a number of days.   |
-| `daily()`         | Sets a daily cycle.                       |
-| `weeks($amount)`  | Sets a cycle based on a number of weeks.  |
-| `weekly()`        | Sets a weekly cycle.                      |
-| `biweekly()`      | Sets a biweekly cycle (two weeks).        |
-| `months($amount)` | Sets a cycle based on a number of months. |
-| `monthly()`       | Sets a monthly cycle.                     |
-| `bimonthly()`     | Sets a bimonthly cycle (two months).      |
-| `quarterly()`     | Sets a quarterly cycle (three months).    |
-| `biannual()`      | Sets a semester cycle (six months).       |
-| `yearly()`        | Sets a yearly cycle.                      |
-| `biennial()`      | Sets a two-year cycle.                    |
-| `triennial()`     | Sets a three-year cycle.                  |
+| Method                        | Description                               |
+|-------------------------------|-------------------------------------------|
+| `days($amount)`               | Sets a cycle based on a number of days.   |
+| `daily()`                     | Sets a daily cycle.                       |
+| `weeks($amount)`              | Sets a cycle based on a number of weeks.  |
+| `weekly()`                    | Sets a weekly cycle.                      |
+| `biweekly()`                  | Sets a biweekly cycle (two weeks).        |
+| `months($amount)`             | Sets a cycle based on a number of months. |
+| `monthly()`                   | Sets a monthly cycle.                     |
+| `bimonthly()`                 | Sets a bimonthly cycle (two months).      |
+| `quarterly()`                 | Sets a quarterly cycle (three months).    |
+| `biannual()`                  | Sets a semester cycle (six months).       |
+| `yearly()`                    | Sets a yearly cycle.                      |
+| `biennial()`                  | Sets a two-year cycle.                    |
+| `triennial()`                 | Sets a three-year cycle.                  |
+| [`forever()`](#forever-plans) | Sets a cycle without end.                 |
 
 If none of these cycles adjusts to your liking, you fine tune the interval with `every()`, which accepts an interval.
 
@@ -412,6 +414,56 @@ use Laragear\Subscriptions\Facades\Plan;
 
 Plan::called('Trial')->forOnlyOneWeek();
 ```
+
+### Forever plans
+
+> [!WARNING]
+> 
+> This requires a [migration upgrade](#upgrading).
+
+Instead of manually creating a "forever plan" with an interval until the end of time, you can use the `forever()` method that does exactly the same by simply setting the interval as `null`.
+
+```php
+use Laragear\Subscriptions\Facades\Plan;
+
+Plan::called('Forever')->forever();
+```
+
+> [!IMPORTANT]
+> 
+> Plans marked with `forever()` will not be renewable, and not have any grace period.
+
+### Fixed grace period
+
+> [!WARNING]
+>
+> This requires a [migration upgrade](#upgrading).
+
+The `grace()` method can be used to add a fixed [grace period](#grace-period) for the Subscription created from the Plan, or any of the helpers that start with "grace" like `graceThreeDays()` or `graceTwoWeeks()`. When a Subscription is created from the Plan, or [renewed](#grace-period), the grace period will be automatically applied.
+
+```php
+use Laragear\Subscriptions\Facades\Plan;
+
+Plan::called('Basic')->monthly()->graceThreeDays();
+
+Plan::called('Basic - Yearly')->yearly()->graceOneMonth();
+```
+
+Alternatively, you can use a callback that receives the start and end date of the current subscription cycle, and should return the moment the grace period should end, or a `DateInterval` instance to add to the subscription end moment.
+
+```php
+use Carbon\WeekDay;
+use Illuminate\Support\Carbon;
+use Laragear\Subscriptions\Facades\Plan;
+
+Plan::called('Basic')->monthly()->grace(function (Carbon $start, Carbon $end) {
+    return $end->addWeek()->setDaysFromStartOfWeek(WeekDay::Friday->value);
+});
+```
+
+> [!NOTE]
+> 
+> Callbacks are serialized using the official [`laravel/serializable-closure` package](https://github.com/laravel/serializable-closure), and signed using the application key.
 
 ### Plan subscribers limit
 
@@ -772,7 +824,7 @@ $subscription = Auth::user()->subscribeTo(Plan::find('b6954722...'));
 $subscription->updateInterval(CarbonInterval::year());
 ```
 
-> [!DANGER]
+> [!CAUTION]
 > 
 > This only works with freshly created subscriptions. Forcefully changing the interval **after** the first cycle will corrupt the cycle count and start/end dates. 
 
@@ -838,16 +890,20 @@ $oldestExpired = Subscription::oldest()->expired()->get();
 
 ### Renew / Extend
 
-To renew a subscription for another cycle, use the `renewOnce()` method. It will _extend_ the subscription one cycle.
+To renew a subscription for another cycle, use the `renewOnce()` method. It will _extend_ the subscription one cycle, and update the grace end if there is a [fixed grace period](#fixed-grace-period).  
 
 ```php
 use Illuminate\Support\Facades\Auth;
 
 $user = Auth::user();
 
-echo $user->subscription->ends_at; // "2020-02-28 23:59:59"
+echo $user->subscription->ends_at;       // "2020-02-28 23:59:59"
+echo $user->subscription->grace_ends_at; // "2020-03-04 23:59:59"
 
-echo $user->subscription->renewOnce()->ends_at; // "2020-03-31 23:59:59"
+$user->subscription->renewOnce();
+ 
+echo $user->subscription->ends_at;       // "2020-03-31 23:59:59"
+echo $user->subscription->grace_ends_at; // "2020-04-04 23:59:59"
 ```
 
 You may also extend a subscription for more than one cycle using `renewBy()` along the number of cycles.
@@ -858,21 +914,22 @@ echo $user->subscription->renewBy(2)->ends_at; // "2020-04-30 23:59:59"
 
 > [!IMPORTANT]
 > 
-> Since renewing a subscription removes the past [grace period](#grace-period), ensure you call `graceTo()` after renewing or [upgrading/downgrading](#upgrading--downgrading).
+> Renewing a subscription will remove the grace end if there is no [fixed grace period](#fixed-grace-period). Ensure you call `graceTo()` after renewing or [upgrading/downgrading](#upgrading--downgrading).
 
 ### Grace period
 
-When a Subscription is not renewed, the subscription will expire at the end of the cycle, rendering it non-active. This can be relatively problematic on some scenarios, for example, when you don't expect users to renew their subscriptions in your premises on a weekend when the store is closed. To avoid this, you can set a grace period in which the subscription will stay active after the cycle has ended.
+When a Subscription has a [fixed grace period from its Plan](#fixed-grace-period), renewing it will automatically apply that grace period. Otherwise, you may set a custom grace period in which the subscription will stay active after the cycle has ended.
 
-You can use `graceTo()` with the amount of days to take as a grace period, or a function that returns the time the grace period should end.
+Use `graceTo()` with the amount of days to take as a grace period, or a function that returns the moment the grace period should end.
 
 ```php
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 Auth::user()
     ->subscription
     ->renewOnce()
-    ->graceTo(function ($start, $end) {
+    ->graceTo(function (Carbon $start, Carbon $end): Carbon {
         return $end->nextFriday()->endOfDay();
     })
     ->save();
@@ -886,7 +943,7 @@ if ($subscription->hasGracePeriod()) {
 }
 ```
 
-You can check if the subscription is on grace period or not using `isOnGracePeriod()` and `isNotOnGracePeriod()`, respectively:
+You can check if the subscription is on a grace period or not using `isOnGracePeriod()` and `isNotOnGracePeriod()`, respectively:
 
 ```php
 if ($subscription->isOnGracePeriod()) {
@@ -894,9 +951,9 @@ if ($subscription->isOnGracePeriod()) {
 }
 ```
 
-> [!WARNING] 
+> [!DANGER] 
 > 
-> Ensure that you use `graceTo()` after [renewing it](#renew--extend), as a renewal will invalidate the previous grace period.
+> Renewing a subscription from a Plan without grace period will remove it. You will need to use `graceTo()` after [renewing it](#renew--extend) to add it again manually.
 
 ### Unsubscribe / Terminate
 
@@ -955,7 +1012,7 @@ if ($user->subscription->isCancelled()) {
 
 ### Modifying the subscription
 
-Most of the subscription data is copied from its parent [Plan](#plans). Laragear's Subscriptions package automatically copies over the Plan data into the Subscription model, which allows you to modify a particular Subscription, isolating its data from the parent Plan itself and other similar Subscriptions.
+Most of the subscription data is copied from its parent [Plan](#plans). Laragear's Subscriptions package automatically copies over the Plan data into the Subscription model, which allows you to modify a particular Subscription, isolating its data from the parent Plan and other Subscriptions.
 
 ```php
 $subscription->capabilities->set('deliveries', 20);
@@ -981,7 +1038,7 @@ $user->subscription->adjustStartTo(now()->day(5));
 
 $user->subscription->save();
 
-return 'Your subscriptions is now billed the 5th of each month.';
+return 'Your subscription is now billed the 5th of each month.';
 ```
 
 This method returns a `CarbonInterval` instance. You can use that, for example, to calculate how much to charge up-front or at the next billing date, based on the costs of the subscription.
@@ -1058,7 +1115,7 @@ return "Upgrade now and pay a reduced price of $ $price.";
 
 > [!IMPORTANT]
 > 
-> Intervals for `used()` and `unused()` return empty intervals if the subscription hasn't started or already ended.
+> Intervals for `used()` and `unused()` return empty intervals if the subscription hasn't started or already ended (and it's on grace period).
 
 ### Upgrading / Downgrading
 
@@ -1149,7 +1206,7 @@ $user->subscription->save();
 
 ### Checking capabilities
 
-To avoid using complex syntax, you can use convenient methods to check for the capabilities of a subscription. Use `check()` along the capability key in `dot.notation` and one of the self-explanatory methods to check if a condition is true or false.
+To avoid using complex syntax, you can use convenient methods to check for the capabilities of a subscription. 
 
 ```php
 $user = Auth::user();
@@ -1159,7 +1216,7 @@ if ($user->subscription->hasDisabled('delivery.express')) {
 }
 ```
 
-These are the following methods you can chain to a check
+These are the following methods you can chain to a check:
 
 | Method      | Description                                      |
 |-------------|--------------------------------------------------|
@@ -1171,14 +1228,14 @@ These are the following methods you can chain to a check
 | isBlank     | Checks the capability value is "blank".          |
 | isFilled    | Checks the capability value is "filled".         |
 
-You can also fluently compare values using the `check()` method:
+You can also fluently compare values using the `check()` method using `dot.notation`.
 
 ```php
 $user = Auth::user();
 
 $count = $user->deliveries()->forCurrentMonth()->count();
 
-if ($user->subscription->check($count)->exceeds('deliveries')) {
+if ($user->subscription->check($count)->exceeds('deliveries.monthly')) {
     return 'You have depleted all your available deliveries for this month.';
 }
 ```
@@ -1379,6 +1436,41 @@ $subscription = Subscription::factory()
     ->createOne();
 
 $subscription->attach($company);
+```
+
+## Upgrading
+
+If you're upgrading from 3.x, there is a migration you should run, which is required to enable [forever plans](#forever-plans) and [fixed grace periods](#fixed-grace-period):
+
+```php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up()
+    {
+        Schema::table('plans', function (Blueprint $blueprint) {
+            $table->string('interval')->nullable()->change();
+            $table->string('grace')->nullable();
+        });
+        
+        Schema::table('subscription', function (Blueprint $blueprint) {
+            $table->string('interval')->nullable()->change();
+            $table->string('grace')->nullable();
+            $table->string('ends_at')->nullable()->change();
+        });
+    }
+}
+```
+
+You can easily execute this migration by publishing the upgrading migration and migrating.
+
+```shell
+php artisan vendor:publish --provider="Laragear\Subscriptions\SubscriptionsServiceProvider" --tag=upgrades
+
+php artisan migrate
 ```
 
 ## Laravel Octane compatibility
