@@ -51,23 +51,29 @@ You will be prompted for a personal access token. If you don't have one, follow 
 > 
 > You can find more information about in [this article](https://darkghosthunter.medium.com/php-use-your-private-repository-in-composer-without-ssh-keys-da9541439f59).
 
-## How this works?
+## How does this work?
 
-Laragear's Subscriptions package uses the power of Laravel Eloquent Models with some magic to handle a small but flexible Subscription system.
+Laragear's Subscriptions package uses the power of Laravel Eloquent Models with some magic to handle a small but flexible Subscription system, **detached from any payment service** (Stripe, Paypal, Parcel, etc).
 
-The basic approach is simple: a Plan acts like a blueprint to create Subscriptions, which are marked to renew by certain intervals. A model, like your included User, can have one subscription, or even multiple subscriptions at the same time.
+The basic approach is simple: a Subscription is created based on a Plan. Subscribers can manually renew their subscription, or you may do it automatically by saving their payment data. 
 
 This enables multiple ways to handle subscriptions across your app:
 
 - Upgrade only to a group of Plans.
 - Share a subscription between multiple users.
+- Cancel or immediately terminate a subscription.
+- Limit Plans based on a number of subscribers, or time.
 - Lock and unlock Plans...
 
 ... and much more.
 
+> [!IMPORTANT]
+>
+> This library does not handle payments. You're free to push your finances inside your application, or offload that into another application or service, especially if you want to charge automatically.
+
 ## Set up
 
-Before creating plans and subscribing users to a Plan, you will need to install the application and setup some  minor models so you're ready to go. Don't worry, it only takes 5 minutes.
+Before creating plans and subscribing users to a Plan, you will need to install the application and setup some models so you're ready to go. Don't worry, it only takes 5 minutes.
 
 ### 1. Install the files
 
@@ -120,7 +126,7 @@ $actors = Subscription::find('bc728326...')->adults;
 
 ### 3. Migrate the tables.
 
-If you don't require any further [change to the migrations files](MIGRATIONS.md), you can just migrate your database tables like it was another day in the office:
+If you don't require any further [changes to the migrations files](MIGRATIONS.md), you can just migrate your database tables like it was another day in the office:
 
 ```shell
 php artisan migrate
